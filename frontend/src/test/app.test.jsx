@@ -1,0 +1,251 @@
+import React from "react";
+import { describe, expect, it, vi, beforeEach } from "vitest";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
+import App from "../app/App.jsx";
+import { AuthProvider, TOKEN_KEY } from "../auth/AuthContext.jsx";
+import { ThemeProvider } from "../app/ThemeContext.jsx";
+import { SceneProvider } from "../app/SceneContext.jsx";
+import { validate } from "../components/sections/ContactSection.jsx";
+
+const USER = { id: 1, name: "Asha Rao", email: "asha@example.com", created_at: "2026-01-05T10:00:00Z", has_password: true, google_linked: false, marketing_opt_in: false };
+const json = (body, status = 200) => Promise.resolve(new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } }));
+
+function mockApi(handlers = {}) {
+  const calls = [];
+  vi.stubGlobal("fetch", vi.fn((url, opts = {}) => {
+    const path = String(url).replace(/^https?:\/\/[^/]+/, "");
+    calls.push({ path, method: opts.method || "GET", body: opts.body ? JSON.parse(opts.body) : null, auth: opts.headers?.Authorization });
+    const h = handlers[`${opts.method || "GET"} ${path}`];
+    return h ? h(opts) : json({ detail: "not mocked" }, 404);
+  }));
+  return calls;
+}
+
+function renderApp(route = "/") {
+  return render(
+    <MemoryRouter initialEntries={[route]}>
+      <ThemeProvider><AuthProvider><SceneProvider><App /></SceneProvider></AuthProvider></ThemeProvider>
+    </MemoryRouter>
+  );
+}
+
+beforeEach(() => { localStorage.clear(); });
+
+describe("homepage", () => {
+  it("renders every section and a footer whose links all have real destinations", async () => {
+    mockApi();
+    renderApp("/");
+    for (const re of [/we build what's next/i, /from complex ideas to real systems/i, /things we have built/i, /four stages/i, /what's ready/i, /learn what's next/i, /technology should move you forward/i, /have a challenge worth solving/i]) {
+      expect((await screen.findAllByRole("heading", { name: re })).length).toBeGreaterThan(0);
+    }
+    const footer = screen.getByRole("contentinfo");
+    const links = within(footer).getAllByRole("link");
+    expect(links.length).toBeGreaterThan(10);
+    links.forEach((a) => { const href = a.getAttribute("href"); expect(href).toBeTruthy(); expect(href).not.toBe("#"); });
+  });
+
+  it("labels concepts as concepts and never claims unavailable products are available", () => {
+    mockApi(); renderApp("/");
+    expect(screen.getAllByText("CONCEPT").length).toBe(2);
+    const products = document.getElementById("products");
+    expect(within(products).getAllByText("Available")).toHaveLength(1);       // only the real, live product
+    expect(within(products).getByText("To be announced")).toBeInTheDocument(); // nothing invented
+  });
+
+  it("opens the EXISTING AuthModal from the navbar", async () => {
+    mockApi(); const user = userEvent.setup(); renderApp("/");
+    await user.click(screen.getAllByRole("button", { name: /^sign in$/i })[0]);
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByRole("heading", { name: /create your account/i })).toBeInTheDocument();
+    expect(within(dialog).getByLabelText(/email address/i)).toBeInTheDocument();
+  });
+
+  it("mobile menu opens, traps nothing after Escape, and closes", async () => {
+    mockApi(); const user = userEvent.setup(); renderApp("/");
+    const toggle = screen.getByRole("button", { name: /open menu/i });
+    await user.click(toggle);
+    expect(screen.getByRole("button", { name: /close menu/i, expanded: true })).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    expect(screen.getByRole("button", { name: /open menu/i })).toHaveAttribute("aria-expanded", "false");
+  });
+});
+
+describe("sign-in flow (shared session)", () => {
+  it("email sign-in stores the token under the original key, verifies it server-side and shows the avatar", async () => {
+    const calls = mockApi({
+      "POST /api/auth/login": () => json({ access_token: "tok-123", token_type: "bearer", expires_in: 100 }),
+      "GET /api/auth/me": () => json(USER),
+    });
+    const user = userEvent.setup(); renderApp("/");
+    await user.click(screen.getAllByRole("button", { name: /^sign in$/i })[0]);
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: /^sign in$/i }));      // switch tab
+    await user.type(within(dialog).getByLabelText(/email address/i), "asha@example.com");
+    await user.type(within(dialog).getByLabelText(/^password/i), "correct-horse-1");
+    await user.click(within(dialog).getAllByRole("button", { name: /sign in/i }).pop());
+    expect(await screen.findByRole("button", { name: /account menu for asha rao/i })).toBeInTheDocument();
+    expect(localStorage.getItem(TOKEN_KEY)).toBe("tok-123");
+    expect(calls.find((c) => c.path === "/api/auth/me").auth).toBe("Bearer tok-123");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("a token already in storage (from the course area) is recognised without logging in again", async () => {
+    localStorage.setItem(TOKEN_KEY, "existing");
+    mockApi({ "GET /api/auth/me": () => json(USER) });
+    renderApp("/");
+    expect(await screen.findByRole("button", { name: /account menu for asha rao/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /get started/i })).not.toBeInTheDocument();
+  });
+
+  it("an expired or revoked token (401) is cleared and the visitor is signed out", async () => {
+    localStorage.setItem(TOKEN_KEY, "stale");
+    mockApi({ "GET /api/auth/me": () => json({ detail: "Session expired. Please sign in again." }, 401) });
+    renderApp("/");
+    await waitFor(() => expect(localStorage.getItem(TOKEN_KEY)).toBeNull());
+    expect((await screen.findAllByRole("button", { name: /get started/i })).length).toBeGreaterThan(0);
+  });
+
+  it("a network failure does NOT log the user out", async () => {
+    localStorage.setItem(TOKEN_KEY, "keep-me");
+    vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new TypeError("Failed to fetch"))));
+    renderApp("/");
+    await new Promise((r) => setTimeout(r, 50));
+    expect(localStorage.getItem(TOKEN_KEY)).toBe("keep-me");
+  });
+});
+
+describe("protected profile area", () => {
+  it("anonymous visitors are sent to the existing sign-in modal", async () => {
+    mockApi(); renderApp("/profile");
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /sign in to continue/i })).toBeInTheDocument();
+  });
+
+  it("shows the real account data returned by the backend", async () => {
+    localStorage.setItem(TOKEN_KEY, "t");
+    mockApi({ "GET /api/auth/me": () => json(USER) });
+    renderApp("/profile");
+    expect(await screen.findByRole("heading", { name: "Profile", level: 2 })).toBeInTheDocument();
+    expect(screen.getAllByText("asha@example.com").length).toBeGreaterThan(0);
+    expect(screen.getByText("Email & password")).toBeInTheDocument();
+    for (const n of ["Account", "Security", "Privacy", "Appearance", "Sessions", "Account management"]) expect(screen.getByRole("link", { name: n })).toBeInTheDocument();
+  });
+
+  it("edits the name through PATCH /api/auth/me", async () => {
+    localStorage.setItem(TOKEN_KEY, "t");
+    const calls = mockApi({ "GET /api/auth/me": () => json(USER), "PATCH /api/auth/me": () => json({ ...USER, name: "Asha R" }) });
+    const user = userEvent.setup(); renderApp("/profile/account");
+    const input = await screen.findByLabelText(/full name/i);
+    await user.clear(input); await user.type(input, "Asha R");
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+    expect(await screen.findByText(/profile updated/i)).toBeInTheDocument();
+    expect(calls.find((c) => c.method === "PATCH").body).toEqual({ name: "Asha R" });
+  });
+
+  it("password change validates locally, then rotates the token from the server", async () => {
+    localStorage.setItem(TOKEN_KEY, "old");
+    const calls = mockApi({ "GET /api/auth/me": () => json(USER), "POST /api/auth/change-password": () => json({ access_token: "rotated", token_type: "bearer", expires_in: 1 }) });
+    const user = userEvent.setup(); renderApp("/profile/security");
+    await user.type(await screen.findByLabelText(/current password/i), "correct-horse-1");
+    await user.type(screen.getByLabelText(/^new password/i), "brand-new-pass-2");
+    await user.type(screen.getByLabelText(/confirm new password/i), "different-pass-9");
+    await user.click(screen.getByRole("button", { name: /change password/i }));
+    expect(await screen.findByText(/don't match/i)).toBeInTheDocument();
+    expect(calls.some((c) => c.path === "/api/auth/change-password")).toBe(false);
+    await user.clear(screen.getByLabelText(/confirm new password/i)); await user.type(screen.getByLabelText(/confirm new password/i), "brand-new-pass-2");
+    await user.click(screen.getByRole("button", { name: /change password/i }));
+    expect(await screen.findByText(/password updated/i)).toBeInTheDocument();
+    expect(localStorage.getItem(TOKEN_KEY)).toBe("rotated");
+  });
+
+  it("surfaces a server error from the backend (wrong current password)", async () => {
+    localStorage.setItem(TOKEN_KEY, "t");
+    mockApi({ "GET /api/auth/me": () => json(USER), "POST /api/auth/change-password": () => json({ detail: "Current password is incorrect." }, 403) });
+    const user = userEvent.setup(); renderApp("/profile/security");
+    await user.type(await screen.findByLabelText(/current password/i), "nope");
+    await user.type(screen.getByLabelText(/^new password/i), "brand-new-pass-2");
+    await user.type(screen.getByLabelText(/confirm new password/i), "brand-new-pass-2");
+    await user.click(screen.getByRole("button", { name: /change password/i }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/current password is incorrect/i);
+  });
+
+  it("theme preference applies to the document and persists", async () => {
+    localStorage.setItem(TOKEN_KEY, "t");
+    mockApi({ "GET /api/auth/me": () => json(USER) });
+    const user = userEvent.setup(); renderApp("/profile/appearance");
+    await user.click(await screen.findByRole("radio", { name: /light/i }));
+    expect(document.documentElement.dataset.theme).toBe("light");
+    expect(localStorage.getItem("udaan_theme")).toBe("light");
+  });
+
+  it("account deletion needs the typed confirmation and the password", async () => {
+    localStorage.setItem(TOKEN_KEY, "t");
+    const calls = mockApi({ "GET /api/auth/me": () => json(USER), "POST /api/auth/delete-account": () => Promise.resolve(new Response(null, { status: 204 })) });
+    const user = userEvent.setup(); renderApp("/profile/manage");
+    const del = await screen.findByRole("button", { name: /delete my account/i });
+    expect(del).toBeDisabled();
+    await user.type(screen.getByLabelText(/your password/i), "correct-horse-1");
+    await user.type(screen.getByLabelText(/type delete/i), "DELETE");
+    await user.click(del);
+    await waitFor(() => expect(calls.find((c) => c.path === "/api/auth/delete-account").body).toEqual({ confirm: "DELETE", password: "correct-horse-1" }));
+    await waitFor(() => expect(localStorage.getItem(TOKEN_KEY)).toBeNull());
+  });
+});
+
+describe("contact form", () => {
+  it("validate() flags bad input", () => {
+    expect(Object.keys(validate({ name: "", email: "x", company: "", service: "", message: "hi", website: "" })).sort()).toEqual(["email", "message", "name", "service"]);
+    expect(validate({ name: "Ravi", email: "r@x.co", company: "", service: "Digital Experiences", message: "A long enough message", website: "" })).toEqual({});
+  });
+
+  it("blocks invalid submissions without calling the API", async () => {
+    const calls = mockApi(); const user = userEvent.setup(); renderApp("/");
+    await user.click(screen.getByRole("button", { name: /start a project/i }));
+    expect(await screen.findByText(/enter your name/i)).toBeInTheDocument();
+    expect(calls.some((c) => c.path === "/api/enquiries")).toBe(false);
+  });
+
+  it("submits a valid enquiry once, then shows success", async () => {
+    const calls = mockApi({ "POST /api/enquiries": () => json({ ok: true }, 201) });
+    const user = userEvent.setup(); renderApp("/");
+    await user.type(screen.getByLabelText("Name"), "Ravi Kumar");
+    await user.type(screen.getByLabelText("Email"), "ravi@example.com");
+    await user.selectOptions(screen.getByLabelText(/service of interest/i), "Digital Experiences");
+    await user.type(screen.getByLabelText(/project description/i), "We need a modern website.");
+    await user.click(screen.getByRole("button", { name: /start a project/i }));
+    expect(await screen.findByText(/message received/i)).toBeInTheDocument();
+    const posts = calls.filter((c) => c.path === "/api/enquiries");
+    expect(posts).toHaveLength(1);
+    expect(posts[0].body).toMatchObject({ name: "Ravi Kumar", email: "ravi@example.com", service: "Digital Experiences", company: null, website: null });
+  });
+
+  it("shows backend errors honestly instead of faking success", async () => {
+    mockApi({ "POST /api/enquiries": () => json({ detail: "Too many enquiries from this connection. Please try again later." }, 429) });
+    const user = userEvent.setup(); renderApp("/");
+    await user.type(screen.getByLabelText("Name"), "Ravi Kumar");
+    await user.type(screen.getByLabelText("Email"), "ravi@example.com");
+    await user.selectOptions(screen.getByLabelText(/service of interest/i), "Something else");
+    await user.type(screen.getByLabelText(/project description/i), "Hello there, long enough.");
+    await user.click(screen.getByRole("button", { name: /start a project/i }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/too many enquiries/i);
+    expect(screen.queryByText(/message received/i)).not.toBeInTheDocument();
+  });
+});
+
+describe("course area (original registration flow preserved)", () => {
+  it("course detail → Register opens AuthModal when signed out", async () => {
+    mockApi(); const user = userEvent.setup(); renderApp("/courses/road-to-future");
+    await user.click((await screen.findAllByRole("button", { name: /register yourself/i }))[0]);
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("signed-in user without a registration gets the registration form after the check", async () => {
+    localStorage.setItem(TOKEN_KEY, "t");
+    mockApi({ "GET /api/auth/me": () => json(USER), "GET /api/registrations/mine": () => json([]) });
+    const user = userEvent.setup(); renderApp("/courses/road-to-future");
+    await user.click((await screen.findAllByRole("button", { name: /register yourself/i }))[0]);
+    expect(await screen.findByRole("heading", { name: /register your interest/i })).toBeInTheDocument();
+  });
+});
