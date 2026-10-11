@@ -242,37 +242,6 @@ def create_enquiry(payload: EnquiryCreate, request: Request, db: Session = Depen
     safe_message = str(payload.message.strip())
 
     # Escape user-provided content before putting it into HTML.
-    from html import escape
-
-    name_html = escape(safe_name)
-    email_html = escape(customer_email)
-    company_html = escape(safe_company)
-    service_html = escape(safe_service)
-    message_html = escape(safe_message).replace("\n", "<br>")
-
-    send_email(
-        CONTACT_TO,
-        f"New Udaan enquiry — {safe_name}",
-        f"""
-        <h2>New project enquiry</h2>
-        <p><b>Name:</b> {name_html}</p>
-        <p><b>Email:</b> {email_html}</p>
-        <p><b>Company:</b> {company_html}</p>
-        <p><b>Service:</b> {service_html}</p>
-        <p><b>Project description:</b><br>{message_html}</p>
-        """,
-    )
-
-    send_email(
-        customer_email,
-        "We received your Udaan project enquiry",
-        f"""
-        <h2>Thanks, {name_html}!</h2>
-        <p>We've received your project enquiry at Udaan Tech Solutions.</p>
-        <p>Our team will review your message and reply to this email.</p>
-        <p>Regards,<br>Udaan Tech Solutions</p>
-        """,
-    )
 
     return {"ok": True}
 
