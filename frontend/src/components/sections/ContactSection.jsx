@@ -57,6 +57,12 @@ async function submit(e) {
       }),
     });
 
+    console.log("EmailJS config check:", {
+      serviceId: import.meta.env.VITE_EMAILJS_SERVICE_ID,
+      templateId: import.meta.env.VITE_EMAILJS_ADMIN_TEMPLATE_ID,
+      publicKeyPresent: Boolean(import.meta.env.VITE_EMAILJS_PUBLIC_KEY),
+    });
+
     // Then send admin notification using EmailJS.
     await emailjs.send(
       import.meta.env.VITE_EMAILJS_SERVICE_ID,
