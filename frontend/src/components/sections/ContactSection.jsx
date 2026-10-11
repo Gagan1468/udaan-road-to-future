@@ -5,6 +5,7 @@ import { Button } from "../ui/Button.jsx";
 import { ErrorMessage } from "../ui/ErrorMessage.jsx";
 import { SectionHeading } from "../ui/SectionHeading.jsx";
 import { scrollToId } from "../../lib/navigation.js";
+import emailjs from "@emailjs/browser";
 
 const SERVICES = ["AI & Intelligent Agents", "Digital Experiences", "Engineering & Automation", "Early access", "Something else"];
 const EMPTY = { name: "", email: "", company: "", service: "", message: "", website: "" };
@@ -30,22 +31,60 @@ export function ContactSection({ service }) {
 
   const set = (k) => (e) => { setForm((f) => ({ ...f, [k]: e.target.value })); setErrors((x) => ({ ...x, [k]: undefined })); setServerError(""); };
 
-  async function submit(e) {
-    e.preventDefault();
-    if (busy) return;                                   // no duplicate submissions
-    const found = validate(form);
-    setErrors(found);
-    if (Object.keys(found).length) { document.getElementById(`enq-${Object.keys(found)[0]}`)?.focus(); return; }
-    setBusy(true); setServerError("");
-    try {
-      await api("/api/enquiries", { method: "POST", body: JSON.stringify({ ...form, company: form.company.trim() || null, website: form.website || null }) });
-      setDone(true); setForm(EMPTY);
-    } catch (err) {
-      setServerError(err.status === 429 ? err.message : err.message?.startsWith("Request failed") || err instanceof TypeError || err.message === "Failed to fetch"
-        ? "We couldn't reach the server. Please check your connection and try again." : err.message);
-    } finally { setBusy(false); }
+async function submit(e) {
+  e.preventDefault();
+  if (busy) return;
+
+  const found = validate(form);
+  setErrors(found);
+
+  if (Object.keys(found).length) {
+    document.getElementById(`enq-${Object.keys(found)[0]}`)?.focus();
+    return;
   }
 
+  setBusy(true);
+  setServerError("");
+
+  try {
+    // First save enquiry in backend/PostgreSQL.
+    await api("/api/enquiries", {
+      method: "POST",
+      body: JSON.stringify({
+        ...form,
+        company: form.company.trim() || null,
+        website: form.website || null,
+      }),
+    });
+
+    // Then send admin notification using EmailJS.
+    await emailjs.send(
+      import.meta.env.VITE_EMAILJS_SERVICE_ID,
+      import.meta.env.VITE_EMAILJS_ADMIN_TEMPLATE_ID,
+      {
+        name: form.name.trim(),
+        email: form.email.trim(),
+        company: form.company.trim() || "Not provided",
+        service: form.service,
+        message: form.message.trim(),
+      },
+      {
+        publicKey: import.meta.env.VITE_EMAILJS_PUBLIC_KEY,
+      }
+    );
+
+    setDone(true);
+    setForm(EMPTY);
+  } catch (err) {
+    console.error("Enquiry submission failed:", err);
+
+    setServerError(
+      "Your enquiry may have been saved, but email delivery could not be confirmed. Please contact us directly if you don't hear back."
+    );
+  } finally {
+    setBusy(false);
+  }
+}
   const field = (k, label, props = {}, optional) => (
     <div className={`field ${props.full ? "full" : ""}`}>
       <label htmlFor={`enq-${k}`}>{label}{optional && <span className="optional"> (optional)</span>}</label>
