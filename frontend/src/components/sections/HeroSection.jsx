@@ -8,6 +8,7 @@ const HEADLINE = ["WE", "BUILD", "WHAT'S", "NEXT."];
 export function HeroSection() {
   return (
     <section id="hero" className="section hero" aria-labelledby="hero-title">
+      <div className="hero-atmosphere" aria-hidden="true" />
       <div className="hero-copy">
         <p className="status-label mono"><span className="pulse" aria-hidden="true" />INDEPENDENT TECHNOLOGY STUDIO · AI × ENGINEERING</p>
         <h1 id="hero-title" className="hero-title" aria-label="We build what's next.">

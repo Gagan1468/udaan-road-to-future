@@ -7,6 +7,7 @@ import { ThemeProvider } from "./app/ThemeContext.jsx";
 import { SceneProvider } from "./app/SceneContext.jsx";
 import "./styles.css";
 import "./styles/site.css";
+import "./styles/enhancements.css";
 
 createRoot(document.getElementById("root")).render(
   <React.StrictMode>

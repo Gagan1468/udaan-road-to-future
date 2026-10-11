@@ -6,6 +6,7 @@ import { useScene } from "../../app/SceneContext.jsx";
 import { useScrollProgress } from "../../hooks/useScrollProgress.js";
 import { NAV_LINKS, scrollToId } from "../../lib/navigation.js";
 import { MobileMenu } from "./MobileMenu.jsx";
+import { SectionJumpNav } from "../ui/SectionJumpNav.jsx";
 
 export function initials(name = "") {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0].toUpperCase()).join("") || "U";
@@ -54,7 +55,8 @@ export function Navbar() {
   const goSection = (e, id) => {
     if (onHome) { e.preventDefault(); scrollToId(id); navigate({ hash: `#${id}` }, { replace: true }); }
   };
-  const activeFor = (l) => (l.to ? location.pathname.startsWith(l.to) : onHome && section === l.section);
+  const activeFor = (l) => Boolean((l.to && location.pathname.startsWith(l.to)) || (onHome && section === l.section));
+  const currentFor = (l) => activeFor(l) ? (onHome ? "location" : "page") : undefined;
 
   return (
     <>
@@ -69,9 +71,9 @@ export function Navbar() {
             {NAV_LINKS.map((l) => (
               <li key={l.label}>
                 {l.to ? (
-                  <NavLink to={l.to} className={activeFor(l) ? "active" : ""}>{l.label}</NavLink>
+                  <NavLink to={l.to} className={activeFor(l) ? "active" : ""} aria-current={currentFor(l)}>{l.label}</NavLink>
                 ) : (
-                  <Link to={`/#${l.section}`} onClick={(e) => goSection(e, l.section)} className={activeFor(l) ? "active" : ""} aria-current={activeFor(l) ? "true" : undefined}>{l.label}</Link>
+                  <Link to={`/#${l.section}`} onClick={(e) => goSection(e, l.section)} className={activeFor(l) ? "active" : ""} aria-current={currentFor(l)}>{l.label}</Link>
                 )}
               </li>
             ))}
@@ -89,6 +91,7 @@ export function Navbar() {
           </div>
         </nav>
       </header>
+      {onHome && <SectionJumpNav activeId={section || "hero"} onNavigate={goSection} />}
       <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} onSection={goSection} />
     </>
   );

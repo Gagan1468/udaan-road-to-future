@@ -6,6 +6,7 @@ import { usePageTitle } from "../hooks/usePageTitle.js";
 import { SECTION_IDS, scrollToId } from "../lib/navigation.js";
 import { SceneLayer } from "../components/three/SceneLayer.jsx";
 import { HeroSection } from "../components/sections/HeroSection.jsx";
+import { TechHighlights } from "../components/sections/TechHighlights.jsx";
 import { ServicesSection } from "../components/sections/ServicesSection.jsx";
 import { WorkSection } from "../components/sections/WorkSection.jsx";
 import { ProcessSection } from "../components/sections/ProcessSection.jsx";
@@ -38,6 +39,7 @@ export default function Home() {
       <SceneLayer />
       <main id="main" className="home" tabIndex={-1}>
         <HeroSection />
+        <TechHighlights />
         <ServicesSection onEnquire={onEnquire} />
         <WorkSection />
         <ProcessSection />

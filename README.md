@@ -18,6 +18,26 @@ React + Vite frontend and FastAPI + PostgreSQL backend. The site has a 3D homepa
 
 The original course, registration and admin components were moved **verbatim** to `frontend/src/legacy/` and `components/auth/AuthModal.jsx`. Only their router wiring changed.
 
+## Design and interaction update
+
+This archive uses original, lightweight React/CSS treatments instead of bundling React Bits component source. The upstream React Bits repository's MIT + Commons Clause terms were reviewed; this ZIP does not copy, port, or redistribute that source.
+
+| Design intent | Independent treatment | Placement and behavior |
+|---|---|---|
+| Pill-style primary navigation | Native React Router links styled as compact pills | Shared desktop navbar; existing mobile drawer, auth actions, and routes remain intact. |
+| Secondary section discovery | Horizontally scrollable, keyboard-accessible section links | Fixed below the navbar on the homepage; points to real section IDs and reflects the active section. |
+| Animated hero / section transition | CSS ambient field and bottom gradient fade | Decorative, pointer-transparent, no additional WebGL renderer; animation stops under reduced-motion preferences. |
+| Interaction feedback | Native pressed/focus states | Existing buttons; no event-capturing canvas or extra animation loop. |
+| Technology/program showcase | Static factual highlights | Lists the actual React, FastAPI, PostgreSQL stack and the existing practical-AI course focus; not partner logos. |
+| Visual learning showcase | Static, responsive, lazy-loaded image gallery plus a native disclosure | Road to Future detail page. Both photos are labeled illustrative and explicitly not Udaan participants or outcomes; sources and licenses are in `frontend/public/images/ASSET-CREDITS.md`. |
+| Premium course card | Existing real course card with its restrained lift interaction | Course listing; its course navigation and copy are unchanged. |
+| Focus border treatment | Subtle `:focus-within` border/ring | Contact form, only while a field is focused. |
+| Creative reveal | Native `<details>` disclosure of the three verified learning pillars | Course detail gallery; keyboard and no-motion friendly. |
+| Submission status | Status pill derived from the existing enquiry state | Contact form reports ready, sending, uncertain email delivery, or an error; API and EmailJS flow remain in place. The native submit button is retained to preserve form semantics. |
+| Admin row actions | Existing explicit Delete button and confirmation dialog | Swipe-to-delete is intentionally not added: this list's destructive action already has a safe, accessible, permission-checked path. |
+
+No new runtime dependency is required for these treatments. The previously existing routes, registration flow, backend contracts, and course/dashboard authorization are preserved. The Contact section no longer logs EmailJS configuration values to the browser console.
+
 ## Project structure
 
 ```
@@ -66,9 +86,9 @@ npm run dev                                              # http://localhost:5173
 ## Tests and build
 
 ```bash
-cd backend  && python -m pytest -q       # 14 tests (SQLite, no external services)
-cd frontend && npm test                  # 27 tests (jsdom; network mocked)
-cd frontend && npm run build             # production build -> dist/
+(cd backend && python -m pytest -q)       # 17 tests (SQLite, no external services)
+(cd frontend && npm test)                  # 31 tests (jsdom; network mocked)
+(cd frontend && npm run build)             # Production frontend bundle
 ```
 
 ## Environment variables

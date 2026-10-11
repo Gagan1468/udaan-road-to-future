@@ -52,3 +52,6 @@
 .email-warning{color:#e8c57e}
 .secondary-action{display:block;margin:12px auto 0;background:transparent;color:inherit;border:0;padding:10px;cursor:pointer}
 @media(max-width:760px){.dashboard-grid{grid-template-columns:1fr}.dashboard-card{min-height:0}.dashboard-hero{border-radius:16px}}
+
+
+@media(prefers-reduced-motion:reduce){.art-core,.art-orbit,.showcase-ring,.showcase-center,.float-box{animation:none!important}.course-card,.work-card,.wp-layer{transition:none!important}.course-card:hover,.work-card:hover{transform:none}}

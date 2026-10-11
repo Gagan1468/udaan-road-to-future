@@ -44,6 +44,10 @@ describe("homepage", () => {
   it("renders every section and a footer whose links all have real destinations", async () => {
     mockApi();
     renderApp("/");
+    const sectionNav = screen.getByRole("navigation", { name: "Homepage sections" });
+    expect(within(sectionNav).getByRole("link", { name: "Overview" })).toHaveAttribute("href", "/#hero");
+    expect(within(sectionNav).getByRole("link", { name: "Contact" })).toHaveAttribute("href", "/#contact");
+    expect(screen.getByText("PostgreSQL")).toBeInTheDocument();
     for (const re of [/we build what's next/i, /from complex ideas to real systems/i, /things we have built/i, /four stages/i, /what's ready/i, /learn what's next/i, /technology should move you forward/i, /have a challenge worth solving/i]) {
       expect((await screen.findAllByRole("heading", { name: re })).length).toBeGreaterThan(0);
     }
@@ -293,6 +297,7 @@ describe("contact form", () => {
   it("submits a valid enquiry once, then shows success", async () => {
     const calls = mockApi({ "POST /api/enquiries": () => json({ ok: true }, 201) });
     const user = userEvent.setup(); renderApp("/");
+    expect(screen.getByText("Ready when you are")).toBeInTheDocument();
     await user.type(screen.getByLabelText("Name"), "Ravi Kumar");
     await user.type(screen.getByLabelText("Email"), "ravi@example.com");
     await user.selectOptions(screen.getByLabelText(/service of interest/i), "Digital Experiences");
@@ -330,5 +335,15 @@ describe("course area (original registration flow preserved)", () => {
     const user = userEvent.setup(); renderApp("/courses/road-to-future");
     await user.click((await screen.findAllByRole("button", { name: /register yourself/i }))[0]);
     expect(await screen.findByRole("heading", { name: /register your interest/i })).toBeInTheDocument();
+  });
+});
+
+
+describe("course imagery", () => {
+  it("uses local illustrative learning photos and labels them honestly", () => {
+    mockApi(); renderApp("/courses/road-to-future");
+    expect(screen.getByRole("heading", { name: /curiosity gets practical/i })).toBeInTheDocument();
+    expect(screen.getByAltText(/teen learners working on laptops/i)).toHaveAttribute("loading", "lazy");
+    expect(screen.getByText(/not photos of udaan students/i)).toBeInTheDocument();
   });
 });

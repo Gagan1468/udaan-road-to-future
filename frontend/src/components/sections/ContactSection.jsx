@@ -26,6 +26,8 @@ export function ContactSection({ service }) {
   const [busy, setBusy] = useState(false);
   const [serverError, setServerError] = useState("");
   const [done, setDone] = useState(false);
+  const submissionState = busy ? "sending" : serverError ? (serverError.includes("may have been saved") ? "uncertain" : "error") : "ready";
+  const submissionLabel = submissionState === "sending" ? "Submitting securely" : submissionState === "uncertain" ? "Saved; email delivery unconfirmed" : submissionState === "error" ? "Submission needs attention" : "Ready when you are";
 
   useEffect(() => { if (service) setForm((f) => ({ ...f, service })); }, [service]);
 
@@ -55,12 +57,6 @@ async function submit(e) {
         company: form.company.trim() || null,
         website: form.website || null,
       }),
-    });
-
-    console.log("EmailJS config check:", {
-      serviceId: import.meta.env.VITE_EMAILJS_SERVICE_ID,
-      templateId: import.meta.env.VITE_EMAILJS_ADMIN_TEMPLATE_ID,
-      publicKeyPresent: Boolean(import.meta.env.VITE_EMAILJS_PUBLIC_KEY),
     });
 
     // Then send admin notification using EmailJS.
@@ -116,7 +112,7 @@ async function submit(e) {
         {done ? (
           <div className="form-success" role="status"><CheckCircle2 size={28} /><h3>Message received.</h3><p>Thanks. We'll read it and reply to the email you gave us.</p><Button variant="ghost" onClick={() => setDone(false)}>Send another</Button></div>
         ) : (
-          <form className="contact-form" onSubmit={submit} noValidate>
+          <form className="contact-form" onSubmit={submit} noValidate aria-busy={busy || undefined}>
             <div className="field-grid">
               {field("name", "Name", { autoComplete: "name" })}
               {field("email", "Email", { type: "email", autoComplete: "email" })}
@@ -125,8 +121,9 @@ async function submit(e) {
               {field("message", "Project description", { as: "textarea", full: true })}
               <div className="hp" aria-hidden="true"><label>Website<input tabIndex="-1" autoComplete="off" value={form.website} onChange={set("website")} /></label></div>
             </div>
+            <p className="submission-status" data-state={submissionState} role="status" aria-live="polite">{submissionLabel}</p>
             <ErrorMessage>{serverError}</ErrorMessage>
-            <button className="btn btn-primary" disabled={busy} type="submit">{busy ? "Sending…" : <>Start a Project <ArrowRight size={16} /></>}</button>
+            <button className="btn btn-primary" disabled={busy} type="submit" aria-busy={busy || undefined}>{busy ? "Sending…" : <>Start a Project <ArrowRight size={16} /></>}</button>
           </form>
         )}
         <aside className="contact-aside">
