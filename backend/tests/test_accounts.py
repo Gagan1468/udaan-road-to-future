@@ -75,3 +75,41 @@ def test_delete_account_requires_password_and_removes_data(client):
 def test_admin_tokens_cannot_act_as_users(client):
     admin = client.post("/api/admin/login", json={"username": "admin", "password": "admin-pass-for-tests"}).json()["access_token"]
     assert client.get("/api/auth/me", headers=auth(admin)).status_code == 401
+
+
+def test_duplicate_registration_is_rejected_without_creating_another_row(client):
+    token = signup(client)
+    payload = {"mode": "individual", "name": "Asha Rao", "email": "a@example.com", "class_level": "9"}
+    first = client.post("/api/registrations", json=payload, headers=auth(token))
+    assert first.status_code == 201
+    second = client.post("/api/registrations", json=payload, headers=auth(token))
+    assert second.status_code == 409
+    assert "already has a Road to Future registration" in second.json()["detail"]
+    assert len(client.get("/api/registrations/mine", headers=auth(token)).json()) == 1
+
+
+def test_course_dashboard_requires_auth_and_enrollment(client):
+    assert client.get("/api/courses/road-to-future/dashboard").status_code == 401
+    token = signup(client)
+    denied = client.get("/api/courses/road-to-future/dashboard", headers=auth(token))
+    assert denied.status_code == 404
+    payload = {"mode": "individual", "name": "Asha Rao", "email": "a@example.com", "class_level": "9"}
+    assert client.post("/api/registrations", json=payload, headers=auth(token)).status_code == 201
+    dashboard = client.get("/api/courses/road-to-future/dashboard", headers=auth(token))
+    assert dashboard.status_code == 200
+    body = dashboard.json()
+    assert body["course_id"] == "road-to-future"
+    assert body["live_classes"]["status"] == "Not Set Yet"
+    assert body["recorded_classes"]["status"] == "Not Set Yet"
+    assert body["resources"]["status"] == "Not Set Yet"
+
+
+
+def test_registration_is_saved_before_frontend_email_confirmation(client):
+    token = signup(client)
+    payload = {"mode": "individual", "name": "Asha Rao", "email": "a@example.com", "class_level": "9"}
+    response = client.post("/api/registrations", json=payload, headers=auth(token))
+    assert response.status_code == 201
+    assert response.json()["confirmation_email_sent"] is False
+    # The row is committed before the frontend attempts email delivery.
+    assert len(client.get("/api/registrations/mine", headers=auth(token)).json()) == 1

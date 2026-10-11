@@ -8,6 +8,7 @@ const ProfileLayout = lazy(() => import("../pages/profile/ProfileLayout.jsx"));
 const AdminPage = lazy(() => import("../pages/Admin.jsx"));
 const lazyNamed = (loader, name) => lazy(() => loader().then((m) => ({ default: m[name] })));
 const CoursesListPage = lazyNamed(() => import("../pages/Courses.jsx"), "CoursesListPage");
+const CourseDashboardPage = lazyNamed(() => import("../pages/Courses.jsx"), "CourseDashboardPage");
 const CourseDetailPage = lazyNamed(() => import("../pages/Courses.jsx"), "CourseDetailPage");
 const ProfileOverview = lazyNamed(() => import("../pages/profile/ProfileViews.jsx"), "ProfileOverview");
 const AccountSettings = lazyNamed(() => import("../pages/profile/ProfileViews.jsx"), "AccountSettings");
@@ -24,6 +25,7 @@ export function AppRoutes() {
         <Route path="/" element={<Home />} />
         <Route path="/courses" element={<CoursesListPage />} />
         <Route path="/courses/road-to-future" element={<CourseDetailPage />} />
+        <Route path="/dashboard/course/:courseId" element={<RequireAuth><CourseDashboardPage /></RequireAuth>} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/profile" element={<RequireAuth><ProfileLayout /></RequireAuth>}>
           <Route index element={<ProfileOverview />} />

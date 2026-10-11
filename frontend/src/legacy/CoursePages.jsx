@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight, Sparkles, BrainCircuit, Presentation, Code2, CalendarDays, Clock3, ShieldCheck, Zap, BookOpen, Users, Download, CheckCircle2, X, GraduationCap, LogOut, RefreshCw, Search, Trash2, LockKeyhole } from "lucide-react";
 import { api } from "../lib/api.js";
+import emailjs from "@emailjs/browser";
 
 const pillars = [
   { icon: Presentation, title: "AI for presentations & visuals", text: "Create polished slides, posters, infographics, and visual concepts with AI tools." },
@@ -39,11 +40,42 @@ export function CourseDetail({ onBack, onRegister, registerLabel = "Register You
 export function RegistrationModal({ onClose, onSuccess, token }) {
   const [mode,setMode]=useState("individual"), [form,setForm]=useState({name:"",email:"",phone:"",class_level:"9",school:"",city:""}), [busy,setBusy]=useState(false), [error,setError]=useState("");
   const change=(k,v)=>{setForm(p=>({...p,[k]:v}));setError("");};
-  async function submit(e){e.preventDefault();setBusy(true);setError("");try{const result=await api("/api/registrations",{method:"POST",body:JSON.stringify({...form,mode})},token);onSuccess(result);}catch(err){setError(err.message || "Could not submit registration.");}finally{setBusy(false);}}
+  async function submit(e){
+    e.preventDefault();
+    if(busy)return;
+    setBusy(true);setError("");
+    try {
+      // Persist first. Email failure must not turn a saved registration into a retryable
+      // form error, because retrying could create another enrollment.
+      const result = await api("/api/registrations",{method:"POST",body:JSON.stringify({...form,mode})},token);
+      let confirmationEmailSent = false;
+      try {
+        const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+        const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+        const templateId = import.meta.env.VITE_EMAILJS_AUTO_REPLY_TEMPLATE_ID || "m22699q";
+        if (!serviceId || !publicKey || !templateId) throw new Error("EmailJS is not configured");
+        await emailjs.send(serviceId, templateId, {
+          name: form.name.trim(),
+          email: form.email.trim(),
+          registration_code: result.registration_code,
+          course_name: "Road to Future",
+          dashboard_url: `${window.location.origin}/dashboard/course/road-to-future`,
+        }, { publicKey });
+        confirmationEmailSent = true;
+      } catch {
+        // Registration is already saved; the success screen explains email status.
+      }
+      onSuccess({...result, confirmation_email_sent: confirmationEmailSent});
+    } catch(err) {
+      setError(err.message || "Could not submit registration.");
+    } finally {
+      setBusy(false);
+    }
+  }
   return <div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)onClose();}}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="registration-title"><button className="close-button" onClick={onClose} aria-label="Close registration form"><X size={20}/></button><small>ROAD TO FUTURE</small><h2 id="registration-title">Register your interest</h2><p className="muted">Your registration is sent to the course database.</p><div className="mode-tabs" role="group" aria-label="Registration type"><button type="button" className={mode==="individual"?"selected":""} onClick={()=>setMode("individual")}><Users size={16}/> Individual</button><button type="button" className={mode==="school"?"selected":""} onClick={()=>setMode("school")}><GraduationCap size={16}/> School</button></div><form onSubmit={submit}><div className="form-grid"><label>Full name<input required minLength="2" maxLength="120" autoComplete="name" value={form.name} onChange={e=>change("name",e.target.value)} placeholder="Your full name"/></label><label>Email address<input required type="email" maxLength="254" autoComplete="email" value={form.email} onChange={e=>change("email",e.target.value)} placeholder="you@example.com"/></label><label>Phone <span>(optional)</span><input type="tel" maxLength="40" autoComplete="tel" value={form.phone} onChange={e=>change("phone",e.target.value)} placeholder="Phone number"/></label><label>Class<select value={form.class_level} onChange={e=>change("class_level",e.target.value)}><option value="9">Class 9</option><option value="11">Class 11</option></select></label>{mode==="school"&&<><label className="full">School name<input required maxLength="180" value={form.school} onChange={e=>change("school",e.target.value)} placeholder="Name of school"/></label><label className="full">City<input required maxLength="120" value={form.city} onChange={e=>change("city",e.target.value)} placeholder="City"/></label></>}</div><p className="privacy-note">By submitting, you confirm these details are accurate. Do not enter sensitive information.</p>{error&&<p className="error" role="alert">{error}</p>}<button className="primary submit" disabled={busy}>{busy?"Submitting…":"Submit registration"} <ArrowRight size={17}/></button></form></section></div>;
 }
 
-export function SuccessModal({entry,onClose}) {
+export function SuccessModal({entry,onClose,onDashboard}) {
   if(!entry)return null;
-  return <div className="modal-backdrop"><section className="success-modal" role="dialog" aria-modal="true" aria-labelledby="success-title"><div className="success-icon"><CheckCircle2 size={34}/></div><small>REGISTRATION RECEIVED</small><h2 id="success-title">You’re on your way.</h2><p>Your registration was saved to the Road to Future database.</p><div className="reference"><span>Registration ID</span><strong>{entry.registration_code}</strong></div><button className="primary submit" onClick={onClose}>Continue <ArrowRight size={17}/></button></section></div>;
+  return <div className="modal-backdrop"><section className="success-modal" role="dialog" aria-modal="true" aria-labelledby="success-title"><div className="success-icon"><CheckCircle2 size={34}/></div><small>REGISTRATION SAVED</small><h2 id="success-title">You’re on your way.</h2><p>Your registration has been saved to the Road to Future database.</p>{entry.confirmation_email_sent ? <p className="email-status" role="status">Confirmation email sent to {entry.email}.</p> : <p className="email-status email-warning" role="status">We couldn't confirm email delivery. Your registration is saved—do not submit it again. You can open your dashboard now.</p>}<div className="reference"><span>Registration ID</span><strong>{entry.registration_code}</strong></div><button className="primary submit" onClick={onDashboard}>Go to Course Dashboard <ArrowRight size={17}/></button><button className="secondary-action" onClick={onClose}>Close</button></section></div>;
 }

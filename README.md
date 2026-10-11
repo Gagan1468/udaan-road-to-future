@@ -11,7 +11,10 @@ React + Vite frontend and FastAPI + PostgreSQL backend. The site has a 3D homepa
 | Shared session | The homepage and course/registration area are the **same SPA on one origin**, so they share one session. On load the token is verified server-side with `GET /api/auth/me`; a 401 clears it |
 | Profile `/profile/*` | Overview, Account, Security, Privacy, Appearance, Sessions, Account management (protected; unauthenticated visitors get the existing sign-in modal and stay on the page they asked for) |
 | Backend | `PATCH /api/auth/me`, `GET /api/auth/session`, `POST /api/auth/change-password`, `POST /api/auth/sessions/revoke-others`, `GET /api/auth/me/export`, `POST /api/auth/delete-account`, `POST /api/enquiries`, `GET /api/admin/enquiries`. Tokens now carry a `tv` (token version) claim that is checked against the database |
-| Routing | Added `react-router-dom`. Routes: `/`, `/courses`, `/courses/road-to-future`, `/profile/*`, `/admin` |
+| Routing | Added `react-router-dom`. Routes: `/`, `/courses`, `/courses/road-to-future`, `/dashboard/course/:courseId`, `/profile/*`, `/admin` |
+| Course dashboard | Enrollment-protected Road to Future dashboard; live classes, recordings and resources remain `Not Set Yet` until real details are configured |
+| Registration confirmation | Registration is committed first, then the frontend attempts an EmailJS auto-reply. Email failure is shown honestly and does not ask the user to submit again |
+| Duplicate registration | Application rejects a second linked registration; a partial unique index migration is included to enforce this at database level after checking existing data |
 
 The original course, registration and admin components were moved **verbatim** to `frontend/src/legacy/` and `components/auth/AuthModal.jsx`. Only their router wiring changed.
 
@@ -74,13 +77,18 @@ cd frontend && npm run build             # production build -> dist/
 |---|---|---|
 | Frontend (Vercel) | `VITE_API_BASE_URL` | e.g. `https://udaan-road-to-future-api.onrender.com` |
 | Frontend (Vercel) | `VITE_GOOGLE_CLIENT_ID` | public OAuth client id |
+| Frontend (Vercel) | `VITE_EMAILJS_SERVICE_ID` | EmailJS service used by enquiry and course confirmation flows |
+| Frontend (Vercel) | `VITE_EMAILJS_PUBLIC_KEY` | Public EmailJS key; not a secret, but restrict it in EmailJS settings |
+| Frontend (Vercel) | `VITE_EMAILJS_ADMIN_TEMPLATE_ID` | Existing enquiry admin-notification template |
+| Frontend (Vercel) | `VITE_EMAILJS_AUTO_REPLY_TEMPLATE_ID` | Course confirmation template; defaults to `m22699q` if unset |
 | Backend (Render) | `DATABASE_URL`, `SESSION_SECRET`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `FRONTEND_ORIGIN`, `GOOGLE_CLIENT_ID` | unchanged. Never prefix secrets with `VITE_` |
 
 ## Deployment
 
 1. **Database first.** Run `backend/migrate_homepage_profile.sql` once against the production PostgreSQL database. `create_all` adds the new `enquiries` table at startup but never alters existing tables, so the two new `users` columns need this script. Without it the API will error on every user query.
-2. Deploy the backend (Render). Existing configuration is unchanged. CORS now also allows `PATCH`.
-3. Deploy the frontend (Vercel). `frontend/vercel.json` rewrites all paths to `index.html` so `/profile` and `/courses/...` work on refresh. Root directory: `frontend`, build: `npm run build`, output: `dist`.
+2. Before enforcing one linked registration per account, run the preflight query documented in `backend/migrate_course_dashboard.sql`. If it returns duplicate `user_id` values, review records manually; do not delete historical registrations automatically. Apply the migration only after resolving any duplicates. This migration is not run automatically at startup.
+3. Deploy the backend (Render). Existing configuration is unchanged. CORS now also allows `PATCH`.
+4. Deploy the frontend (Vercel). `frontend/vercel.json` rewrites all paths to `index.html` so `/profile` and `/courses/...` work on refresh. Root directory: `frontend`, build: `npm run build`, output: `dist`.
 
 **Rolling out token versions:** tokens issued before this release have no `tv` claim and are treated as version 0, so existing users stay signed in.
 
@@ -92,7 +100,7 @@ cd frontend && npm run build             # production build -> dist/
 - **Email change** and **password reset by email** are not implemented: the backend has no email-sending or verification flow. The UI says so instead of faking it.
 - **Privacy:** product-update preference and data export/delete are real and persisted. Profile visibility and analytics preferences are not offered because the product has neither.
 - **Appearance** is stored per device. Light/dark applies to the homepage, profile and navbar; the course and admin pages keep their original dark design.
-- **Enquiry spam protection:** honeypot field + 5 enquiries/hour per IP, in-process (resets on restart; per instance). Submissions are readable via `GET /api/admin/enquiries` (admin token). There is no admin UI for them yet, and no email notification is sent.
+- **Enquiry spam protection:** honeypot field + 5 enquiries/hour per IP, in-process (resets on restart; per instance). Submissions are readable via `GET /api/admin/enquiries` (admin token). There is no admin UI for them yet, and enquiry email notification is sent through EmailJS after the enquiry is saved. Course confirmation similarly reports email delivery status separately from the saved registration.
 - Content: the only real work/product in this repo is the course platform. The two other work items are labelled **CONCEPT**; the second product slot says "To be announced". Edit `frontend/src/data/content.js` when real items exist. No privacy/terms links or contact details appear because no such pages/data exist.
 - The 3D chunk is ~830 kB (~223 kB gzip) and is lazy-loaded after first paint.
 

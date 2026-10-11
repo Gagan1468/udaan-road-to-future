@@ -1,0 +1,11 @@
+Udaan Road to Future implementation overlay
+
+Extract this ZIP into the existing project root (G:\udaan_home\udaan-road-to-future\udaan-road-to-future) and allow overwriting the listed files. Review `git diff` before running tests.
+
+Important:
+- This archive does not include secrets or production database data.
+- Do NOT run `backend/migrate_course_dashboard.sql` in production immediately.
+- First run its preflight duplicate query on Render. If duplicate user_id groups exist, review manually before applying the unique index migration.
+- Configure Vercel environment variables VITE_EMAILJS_SERVICE_ID and VITE_EMAILJS_PUBLIC_KEY. The confirmation template defaults to m22699q; optionally set VITE_EMAILJS_AUTO_REPLY_TEMPLATE_ID.
+- EmailJS template should address the recipient via `email` and use name, registration_code, course_name, dashboard_url variables.
+- No push/deploy was performed.

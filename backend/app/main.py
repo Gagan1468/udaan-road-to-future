@@ -17,7 +17,7 @@ from sqlalchemy.exc import IntegrityError
 from .config import settings
 from .database import Base, engine, get_db
 from .models import Enquiry, Registration, User
-from .schemas import (AdminLogin, DeleteAccount, EnquiryAck, EnquiryCreate, EnquiryOut, GoogleLogin, LoginOut,
+from .schemas import (AdminLogin, CourseDashboardOut, DeleteAccount, EnquiryAck, EnquiryCreate, EnquiryOut, GoogleLogin, LoginOut,
                       PasswordChange, ProfileUpdate, RegistrationCreate, RegistrationOut, SessionOut, SignupIn, UserLogin, UserOut)
 from .security import TOKEN_HOURS, create_access_token, require_admin, require_user, require_user_session, verify_admin, hash_password, verify_password
 
@@ -257,6 +257,14 @@ def create_registration(payload: RegistrationCreate, user_id: int = Depends(requ
     # A PostgreSQL transaction-level advisory lock serializes school-capacity checks,
     # preventing concurrent requests from exceeding the 100-registration cap.
     try:
+        existing = db.scalar(
+            select(Registration.id).where(Registration.user_id == user_id).limit(1)
+        )
+        if existing is not None:
+            raise HTTPException(
+                status_code=409,
+                detail="This account already has a Road to Future registration. Open your Course Dashboard instead.",
+            )
         if payload.mode == "school":
             if db.bind.dialect.name == "postgresql":
                 db.execute(text("SELECT pg_advisory_xact_lock(8291042026)"))
@@ -278,9 +286,17 @@ def create_registration(payload: RegistrationCreate, user_id: int = Depends(requ
         db.add(record)
         db.commit()
         db.refresh(record)
+        # The frontend sends the configured EmailJS auto-reply after this durable
+        # database commit. Default false keeps the API honest until delivery is confirmed.
         return record
     except HTTPException:
         raise
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="This account may already be registered. Check your Course Dashboard before trying again.",
+        )
     except Exception:
         db.rollback()
         raise HTTPException(status_code=500, detail="Registration could not be saved. Please try again.")
@@ -288,6 +304,32 @@ def create_registration(payload: RegistrationCreate, user_id: int = Depends(requ
 @app.get("/api/registrations/mine", response_model=list[RegistrationOut])
 def my_registrations(user_id: int = Depends(require_user), db: Session = Depends(get_db)):
     return list(db.scalars(select(Registration).where(Registration.user_id == user_id).order_by(Registration.created_at.desc())).all())
+
+
+@app.get("/api/courses/{course_id}/dashboard", response_model=CourseDashboardOut)
+def course_dashboard(course_id: str, user_id: int = Depends(require_user), db: Session = Depends(get_db)):
+    # The current product has one course and registrations do not yet store course_id.
+    # Keep this mapping explicit until a real multi-course model is introduced.
+    if course_id != "road-to-future":
+        raise HTTPException(status_code=404, detail="Course not found.")
+    enrollment = db.scalar(
+        select(Registration.id).where(
+            Registration.user_id == user_id,
+            Registration.mode.in_(("individual", "school")),
+        ).limit(1)
+    )
+    if enrollment is None:
+        # Avoid disclosing enrollment information; the course is unavailable to this account.
+        raise HTTPException(status_code=404, detail="Course enrollment was not found for this account.")
+    return {
+        "course_id": "road-to-future",
+        "title": "Road to Future",
+        "overview": "Your course dashboard. Schedule and learning materials will appear here when configured.",
+        "live_classes": {"status": "Not Set Yet", "items": []},
+        "recorded_classes": {"status": "Not Set Yet", "items": []},
+        "resources": {"status": "Not Set Yet", "items": []},
+    }
+
 
 @app.post("/api/admin/login", response_model=LoginOut)
 def admin_login(payload: AdminLogin):

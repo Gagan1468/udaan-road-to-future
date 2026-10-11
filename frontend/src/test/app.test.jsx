@@ -8,6 +8,7 @@ import { AuthProvider, TOKEN_KEY } from "../auth/AuthContext.jsx";
 import { ThemeProvider } from "../app/ThemeContext.jsx";
 import { SceneProvider } from "../app/SceneContext.jsx";
 import { validate } from "../components/sections/ContactSection.jsx";
+import emailjs from "@emailjs/browser";
 
 vi.mock("@emailjs/browser", () => ({
   default: {
@@ -37,7 +38,7 @@ function renderApp(route = "/") {
   );
 }
 
-beforeEach(() => { localStorage.clear(); });
+beforeEach(() => { localStorage.clear(); vi.unstubAllEnvs(); vi.mocked(emailjs.send).mockResolvedValue({ status: 200, text: "OK" }); });
 
 describe("homepage", () => {
   it("renders every section and a footer whose links all have real destinations", async () => {
@@ -200,6 +201,82 @@ describe("protected profile area", () => {
   });
 });
 
+
+
+
+
+describe("Road to Future registration confirmation", () => {
+  it("keeps a saved registration successful when EmailJS delivery fails and offers the dashboard", async () => {
+    localStorage.setItem(TOKEN_KEY, "t");
+    const calls = mockApi({
+      "GET /api/auth/me": () => json(USER),
+      "GET /api/registrations/mine": () => json([]),
+      "POST /api/registrations": () => json({
+        id: 42,
+        registration_code: "RTF-ABC123",
+        email: "asha@example.com",
+        confirmation_email_sent: false,
+      }, 201),
+      "GET /api/courses/road-to-future/dashboard": () => json({
+        course_id: "road-to-future",
+        title: "Road to Future",
+        overview: "Your course dashboard.",
+        live_classes: { status: "Not Set Yet", items: [] },
+        recorded_classes: { status: "Not Set Yet", items: [] },
+        resources: { status: "Not Set Yet", items: [] },
+      }),
+    });
+    vi.stubEnv("VITE_EMAILJS_SERVICE_ID", "service_test");
+    vi.stubEnv("VITE_EMAILJS_PUBLIC_KEY", "public_test");
+    vi.stubEnv("VITE_EMAILJS_AUTO_REPLY_TEMPLATE_ID", "template_test");
+    vi.mocked(emailjs.send).mockRejectedValueOnce(new Error("EmailJS unavailable"));
+    const user = userEvent.setup();
+    renderApp("/courses/road-to-future");
+    await user.click((await screen.findAllByRole("button", { name: /register yourself/i }))[0]);
+    await user.type(await screen.findByLabelText(/full name/i), "Asha Rao");
+    await user.type(screen.getByLabelText(/email address/i), "asha@example.com");
+    await user.click(screen.getByRole("button", { name: /submit registration/i }));
+    expect(await screen.findByText(/your registration is saved.*do not submit it again/i)).toBeInTheDocument();
+    expect(calls.filter((call) => call.path === "/api/registrations" && call.method === "POST")).toHaveLength(1);
+    await user.click(screen.getByRole("button", { name: /go to course dashboard/i }));
+    expect(await screen.findByRole("heading", { name: /road to future course dashboard/i })).toBeInTheDocument();
+  });
+});
+
+describe("course dashboard", () => {
+  it("shows the real enrollment dashboard and keeps unavailable content clearly unconfigured", async () => {
+    localStorage.setItem(TOKEN_KEY, "t");
+    const calls = mockApi({
+      "GET /api/auth/me": () => json(USER),
+      "GET /api/courses/road-to-future/dashboard": () => json({
+        course_id: "road-to-future",
+        title: "Road to Future",
+        overview: "Your course dashboard.",
+        live_classes: { status: "Not Set Yet", items: [] },
+        recorded_classes: { status: "Not Set Yet", items: [] },
+        resources: { status: "Not Set Yet", items: [] },
+      }),
+    });
+    renderApp("/dashboard/course/road-to-future");
+    expect(await screen.findByRole("heading", { name: /road to future course dashboard/i })).toBeInTheDocument();
+    expect(screen.getByText("Enrollment verified")).toBeInTheDocument();
+    expect(screen.getAllByText("Not Set Yet")).toHaveLength(3);
+    expect(calls.some((call) => call.path === "/api/courses/road-to-future/dashboard" && call.auth === "Bearer t")).toBe(true);
+  });
+
+  it("does not display course content when the backend denies enrollment", async () => {
+    localStorage.setItem(TOKEN_KEY, "t");
+    mockApi({
+      "GET /api/auth/me": () => json(USER),
+      "GET /api/courses/road-to-future/dashboard": () => json({ detail: "Course enrollment was not found for this account." }, 404),
+    });
+    renderApp("/dashboard/course/road-to-future");
+    expect(await screen.findByRole("heading", { name: /dashboard unavailable/i })).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent(/only to enrolled accounts/i);
+    expect(screen.queryByText("Enrollment verified")).not.toBeInTheDocument();
+  });
+});
+
 describe("contact form", () => {
   it("validate() flags bad input", () => {
     expect(Object.keys(validate({ name: "", email: "x", company: "", service: "", message: "hi", website: "" })).sort()).toEqual(["email", "message", "name", "service"]);
@@ -241,7 +318,7 @@ describe("contact form", () => {
 });
 
 describe("course area (original registration flow preserved)", () => {
-  it("course detail → Register opens AuthModal when signed out", async () => {
+  it("course detail â†’ Register opens AuthModal when signed out", async () => {
     mockApi(); const user = userEvent.setup(); renderApp("/courses/road-to-future");
     await user.click((await screen.findAllByRole("button", { name: /register yourself/i }))[0]);
     expect(await screen.findByRole("dialog")).toBeInTheDocument();

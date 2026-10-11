@@ -31,3 +31,24 @@
 
 
 .legacy-surface{min-height:100vh;padding-top:84px;color:#f5f7ff;background:radial-gradient(ellipse at 75% -20%,#1b2e5d 0,transparent 42%),#090d19}.legacy-surface .back-link{margin-top:4px}
+
+
+/* Road to Future enrolled learner dashboard */
+.dashboard-shell{padding-top:34px;padding-bottom:80px;min-height:70vh}
+.dashboard-hero{position:relative;overflow:hidden;margin:28px 0 30px;padding:clamp(28px,5vw,56px);border:1px solid rgba(120,220,255,.2);border-radius:24px;background:radial-gradient(ellipse at 80% 0%,rgba(35,185,255,.14),transparent 45%),linear-gradient(135deg,#101a27,#090d13)}
+.dashboard-hero>small,.dashboard-state>small,.dashboard-card>small{letter-spacing:.16em;color:#79dfff;font-size:11px;font-weight:800}
+.dashboard-hero h1{font-size:clamp(2.4rem,6vw,4.8rem);line-height:1.02;margin:16px 0}
+.dashboard-hero h1 em{font-style:normal;color:#78dfff}
+.dashboard-hero>p{max-width:680px;color:#b6c3d0;line-height:1.7}
+.dashboard-access{display:inline-flex;align-items:center;gap:8px;margin-top:12px;padding:9px 12px;border:1px solid rgba(123,224,178,.35);border-radius:999px;color:#9aefc5;font-size:13px}
+.dashboard-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.dashboard-card{min-height:230px;padding:24px;border:1px solid rgba(255,255,255,.12);border-radius:18px;background:#0e141c}
+.dashboard-card-icon{display:grid;place-items:center;width:42px;height:42px;border-radius:12px;background:rgba(58,215,255,.12);color:#65dfff;margin-bottom:20px}
+.dashboard-card h2{font-size:22px;margin:10px 0}
+.dashboard-card>p:last-child,.dashboard-state p{color:#9aa9b8;line-height:1.65}
+.dashboard-status{display:inline-block;margin:4px 0 0;padding:6px 10px;border:1px solid rgba(255,255,255,.16);border-radius:7px;color:#e7d4a0;font-size:12px;font-weight:800}
+.dashboard-state{margin:60px auto;max-width:650px;padding:32px;border:1px solid rgba(255,255,255,.14);border-radius:20px;background:#0e141c}
+.email-status{font-size:14px;line-height:1.6;color:#78dcae}
+.email-warning{color:#e8c57e}
+.secondary-action{display:block;margin:12px auto 0;background:transparent;color:inherit;border:0;padding:10px;cursor:pointer}
+@media(max-width:760px){.dashboard-grid{grid-template-columns:1fr}.dashboard-card{min-height:0}.dashboard-hero{border-radius:16px}}

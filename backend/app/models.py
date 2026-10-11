@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import Boolean, DateTime, Integer, String, Text, Index, ForeignKey
+from sqlalchemy import Boolean, DateTime, Integer, String, Text, Index, ForeignKey, text
 from sqlalchemy.orm import Mapped, mapped_column
 from .database import Base
 
@@ -28,6 +28,15 @@ class Registration(Base):
     __table_args__ = (
         Index("ix_registrations_mode_created", "mode", "created_at"),
         Index("ix_registrations_email", "email"),
+        # Current product has one course; each signed-in account may hold one enrollment.
+        # NULL user_id rows preserve legacy/unlinked registrations.
+        Index(
+            "uq_registrations_user_id_enrolled",
+            "user_id",
+            unique=True,
+            postgresql_where=text("user_id IS NOT NULL"),
+            sqlite_where=text("user_id IS NOT NULL"),
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)

@@ -48,7 +48,18 @@ class RegistrationOut(BaseModel):
     school: str | None
     city: str | None
     created_at: datetime
+    confirmation_email_sent: bool = False
     model_config = ConfigDict(from_attributes=True)
+
+
+class CourseDashboardOut(BaseModel):
+    course_id: Literal["road-to-future"]
+    title: str
+    overview: str
+    live_classes: dict
+    recorded_classes: dict
+    resources: dict
+
 
 class AdminLogin(BaseModel):
     username: str = Field(min_length=1, max_length=100)
