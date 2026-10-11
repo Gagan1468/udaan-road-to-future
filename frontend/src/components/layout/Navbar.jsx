@@ -6,7 +6,7 @@ import { useScene } from "../../app/SceneContext.jsx";
 import { useScrollProgress } from "../../hooks/useScrollProgress.js";
 import { NAV_LINKS, scrollToId } from "../../lib/navigation.js";
 import { MobileMenu } from "./MobileMenu.jsx";
-import { SectionJumpNav } from "../ui/SectionJumpNav.jsx";
+
 
 export function initials(name = "") {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0].toUpperCase()).join("") || "U";
@@ -91,7 +91,7 @@ export function Navbar() {
           </div>
         </nav>
       </header>
-      {onHome && <SectionJumpNav activeId={section || "hero"} onNavigate={goSection} />}
+
       <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} onSection={goSection} />
     </>
   );

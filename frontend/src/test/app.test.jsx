@@ -44,9 +44,10 @@ describe("homepage", () => {
   it("renders every section and a footer whose links all have real destinations", async () => {
     mockApi();
     renderApp("/");
-    const sectionNav = screen.getByRole("navigation", { name: "Homepage sections" });
-    expect(within(sectionNav).getByRole("link", { name: "Overview" })).toHaveAttribute("href", "/#hero");
-    expect(within(sectionNav).getByRole("link", { name: "Contact" })).toHaveAttribute("href", "/#contact");
+    const primaryNav = screen.getByRole("navigation", { name: "Primary" });
+    expect(within(primaryNav).getByRole("link", { name: "Services" })).toHaveAttribute("href", "/#services");
+    expect(within(primaryNav).getByRole("link", { name: "Contact" })).toHaveAttribute("href", "/#contact");
+    expect(screen.queryByRole("navigation", { name: "Homepage sections" })).not.toBeInTheDocument();
     expect(screen.getByText("PostgreSQL")).toBeInTheDocument();
     for (const re of [/we build what's next/i, /from complex ideas to real systems/i, /things we have built/i, /four stages/i, /what's ready/i, /learn what's next/i, /technology should move you forward/i, /have a challenge worth solving/i]) {
       expect((await screen.findAllByRole("heading", { name: re })).length).toBeGreaterThan(0);
