@@ -63,8 +63,13 @@ def send_email(to_email: str, subject: str, html: str) -> bool:
     try:
         with urllib.request.urlopen(request, timeout=10) as response:
             return 200 <= response.status < 300
+    
+    except urllib.error.HTTPError as exc:
+        error_body = exc.read().decode("utf-8", errors="replace")
+        print(f"Resend HTTP error {exc.code}: {error_body}")
+        return False
     except Exception as exc:
-        print(f"Email delivery request failed: {type(exc).__name__}")
+        print(f"Email delivery request failed: {type(exc).__name__}: {exc}")
         return False
 
 def issue_user_token(user: User) -> str:
