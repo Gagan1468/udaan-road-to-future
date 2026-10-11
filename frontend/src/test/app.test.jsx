@@ -9,6 +9,12 @@ import { ThemeProvider } from "../app/ThemeContext.jsx";
 import { SceneProvider } from "../app/SceneContext.jsx";
 import { validate } from "../components/sections/ContactSection.jsx";
 
+vi.mock("@emailjs/browser", () => ({
+  default: {
+    send: vi.fn().mockResolvedValue({ status: 200, text: "OK" }),
+  },
+}));
+
 const USER = { id: 1, name: "Asha Rao", email: "asha@example.com", created_at: "2026-01-05T10:00:00Z", has_password: true, google_linked: false, marketing_opt_in: false };
 const json = (body, status = 200) => Promise.resolve(new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } }));
 

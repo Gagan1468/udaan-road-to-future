@@ -84,9 +84,13 @@ async function submit(e) {
   } catch (err) {
     console.error("Enquiry submission failed:", err);
 
-    setServerError(
-      "Your enquiry may have been saved, but email delivery could not be confirmed. Please contact us directly if you don't hear back."
-    );
+    if (err?.status) {
+      setServerError(err.message);
+    } else {
+      setServerError(
+        "Your enquiry may have been saved, but email delivery could not be confirmed. Please contact us directly if you don't hear back."
+      );
+    }
   } finally {
     setBusy(false);
   }
