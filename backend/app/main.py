@@ -2,6 +2,10 @@ import csv
 import io
 import secrets
 import time
+import json
+import os
+import urllib.request
+import urllib.error
 from collections import defaultdict, deque
 from datetime import datetime, timezone
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
@@ -28,6 +32,40 @@ app.add_middleware(
 )
 
 USER_TOKEN_HOURS = 24 * 30
+
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
+EMAIL_FROM = os.getenv("EMAIL_FROM", "")
+CONTACT_TO = os.getenv("CONTACT_TO", "buisness.udaan@gmail.com")
+
+
+def send_email(to_email: str, subject: str, html: str) -> bool:
+    if not RESEND_API_KEY or not EMAIL_FROM:
+        print("Email not configured: missing RESEND_API_KEY or EMAIL_FROM")
+        return False
+
+    payload = {
+        "from": EMAIL_FROM,
+        "to": [to_email],
+        "subject": subject,
+        "html": html,
+    }
+
+    request = urllib.request.Request(
+        "https://api.resend.com/emails",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            return 200 <= response.status < 300
+    except Exception as exc:
+        print(f"Email delivery request failed: {type(exc).__name__}")
+        return False
 
 def issue_user_token(user: User) -> str:
     return create_access_token(f"user:{user.id}", "user", expires_hours=USER_TOKEN_HOURS, token_version=user.token_version or 0)
@@ -192,6 +230,45 @@ def create_enquiry(payload: EnquiryCreate, request: Request, db: Session = Depen
     hits.append(now)
     db.add(Enquiry(name=payload.name, email=str(payload.email).lower(), company=payload.company, service=payload.service, message=payload.message.strip()))
     db.commit()
+    customer_email = str(payload.email).lower()
+    safe_name = str(payload.name)
+    safe_company = str(payload.company or "Not provided")
+    safe_service = str(payload.service)
+    safe_message = str(payload.message.strip())
+
+    # Escape user-provided content before putting it into HTML.
+    from html import escape
+
+    name_html = escape(safe_name)
+    email_html = escape(customer_email)
+    company_html = escape(safe_company)
+    service_html = escape(safe_service)
+    message_html = escape(safe_message).replace("\n", "<br>")
+
+    send_email(
+        CONTACT_TO,
+        f"New Udaan enquiry — {safe_name}",
+        f"""
+        <h2>New project enquiry</h2>
+        <p><b>Name:</b> {name_html}</p>
+        <p><b>Email:</b> {email_html}</p>
+        <p><b>Company:</b> {company_html}</p>
+        <p><b>Service:</b> {service_html}</p>
+        <p><b>Project description:</b><br>{message_html}</p>
+        """,
+    )
+
+    send_email(
+        customer_email,
+        "We received your Udaan project enquiry",
+        f"""
+        <h2>Thanks, {name_html}!</h2>
+        <p>We've received your project enquiry at Udaan Tech Solutions.</p>
+        <p>Our team will review your message and reply to this email.</p>
+        <p>Regards,<br>Udaan Tech Solutions</p>
+        """,
+    )
+
     return {"ok": True}
 
 @app.get("/api/admin/enquiries", response_model=list[EnquiryOut])
