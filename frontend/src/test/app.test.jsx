@@ -49,7 +49,7 @@ describe("homepage", () => {
     expect(within(primaryNav).getByRole("link", { name: "Contact" })).toHaveAttribute("href", "/#contact");
     expect(screen.queryByRole("navigation", { name: "Homepage sections" })).not.toBeInTheDocument();
     expect(screen.getByText("PostgreSQL")).toBeInTheDocument();
-    for (const re of [/we build what's next/i, /from complex ideas to real systems/i, /things we have built/i, /four stages/i, /what's ready/i, /learn what's next/i, /technology should move you forward/i, /reviews from our customers/i, /have a challenge worth solving/i]) {
+    for (const re of [/we provide website building, app development, and courses/i, /from complex ideas to real systems/i, /things we have built/i, /four stages/i, /what's ready/i, /learn what's next/i, /technology should move you forward/i, /have a challenge worth solving/i]) {
       expect((await screen.findAllByRole("heading", { name: re })).length).toBeGreaterThan(0);
     }
     const footer = screen.getByRole("contentinfo");
@@ -216,6 +216,11 @@ describe("Road to Future registration confirmation", () => {
     const calls = mockApi({
       "GET /api/auth/me": () => json(USER),
       "GET /api/registrations/mine": () => json([]),
+      "POST /api/otp/send": () => json({ ok: true }, 200),
+      "POST /api/otp/verify": () => json({
+        verification_token: "otp-test-token",
+        phone: "+919876543210",
+      }, 200),
       "POST /api/registrations": () => json({
         id: 42,
         registration_code: "RTF-ABC123",
@@ -240,6 +245,15 @@ describe("Road to Future registration confirmation", () => {
     await user.click((await screen.findAllByRole("button", { name: /register yourself/i }))[0]);
     await user.type(await screen.findByLabelText(/full name/i), "Asha Rao");
     await user.type(screen.getByLabelText(/email address/i), "asha@example.com");
+    await user.type(screen.getByLabelText(/mobile number/i), "9876543210");
+
+    await user.click(screen.getByRole("button", { name: /send sms code/i }));
+    await user.type(await screen.findByLabelText(/sms verification code/i), "123456");
+    await user.click(screen.getByRole("button", { name: /^verify$/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /submit registration/i })).toBeEnabled();
+    });
     await user.click(screen.getByRole("button", { name: /submit registration/i }));
     expect(await screen.findByText(/your registration is saved.*do not submit it again/i)).toBeInTheDocument();
     expect(calls.filter((call) => call.path === "/api/registrations" && call.method === "POST")).toHaveLength(1);

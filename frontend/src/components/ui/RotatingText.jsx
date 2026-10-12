@@ -43,33 +43,31 @@ const RotatingText = forwardRef(function RotatingText(
   const safeTexts = texts.length ? texts : [""];
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
 
-  const handleIndexChange = useCallback(
-    (nextIndex) => {
-      setCurrentTextIndex(nextIndex);
-      onNext?.(nextIndex);
-    },
-    [onNext],
-  );
+  const handleIndexChange = useCallback((nextIndex) => {
+    setCurrentTextIndex(nextIndex);
+  }, []);
+
+  useEffect(() => {
+    onNext?.(currentTextIndex);
+  }, [currentTextIndex, onNext]);
 
   const next = useCallback(() => {
     setCurrentTextIndex((current) => {
       const nextIndex = current === safeTexts.length - 1
         ? (loop ? 0 : current)
         : current + 1;
-      if (nextIndex !== current) onNext?.(nextIndex);
       return nextIndex;
     });
-  }, [safeTexts.length, loop, onNext]);
+  }, [safeTexts.length, loop]);
 
   const previous = useCallback(() => {
     setCurrentTextIndex((current) => {
       const nextIndex = current === 0
         ? (loop ? safeTexts.length - 1 : current)
         : current - 1;
-      if (nextIndex !== current) onNext?.(nextIndex);
       return nextIndex;
     });
-  }, [safeTexts.length, loop, onNext]);
+  }, [safeTexts.length, loop]);
 
   const jumpTo = useCallback((index) => {
     const valid = Math.max(0, Math.min(index, safeTexts.length - 1));

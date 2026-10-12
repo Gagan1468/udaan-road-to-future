@@ -4,19 +4,23 @@ import { ArrowRight } from "lucide-react";
 import { PRODUCTS } from "../../data/content.js";
 import { SectionHeading } from "../ui/SectionHeading.jsx";
 import { useReveal } from "../../hooks/useReveal.js";
+import SpotlightCard from "../ui/SpotlightCard.jsx";
+import AnimatedContent from "../ui/AnimatedContent.jsx";
 
 function ProductCard({ p, onEnquire }) {
   const ref = useReveal();
   const live = p.status === "Available";
   return (
-    <article className="product-card reveal" ref={ref}>
-      <div className="product-top"><span className={`status-pill ${live ? "is-live" : ""}`}>{p.status}</span></div>
-      <h3>{p.name}</h3>
-      <p>{p.text}</p>
-      {p.cta.to
-        ? <Link className="link-cta" to={p.cta.to}>{p.cta.label} <ArrowRight size={15} /></Link>
-        : <button className="link-cta" onClick={() => onEnquire(p.cta.service)}>{p.cta.label} <ArrowRight size={15} /></button>}
-    </article>
+    <AnimatedContent className="product-card-motion" distance={18} duration={0.5}>
+      <SpotlightCard as="article" className="product-card reveal" ref={ref}>
+        <div className="product-top"><span className={`status-pill ${live ? "is-live" : ""}`}>{p.status}</span></div>
+        <h3>{p.name}</h3>
+        <p>{p.text}</p>
+        {p.cta.to
+          ? <Link className="link-cta" to={p.cta.to}>{p.cta.label} <ArrowRight size={15} /></Link>
+          : <button className="link-cta" onClick={() => onEnquire(p.cta.service)}>{p.cta.label} <ArrowRight size={15} /></button>}
+      </SpotlightCard>
+    </AnimatedContent>
   );
 }
 

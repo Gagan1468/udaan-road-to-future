@@ -149,3 +149,32 @@
 @media(prefers-reduced-motion:reduce){.gooey-nav a::before{transition:none}}
 
 .home-bottom-blur{height:44px;margin-top:-44px;position:relative;z-index:2;pointer-events:none;background:linear-gradient(to bottom,transparent,rgba(7,10,15,.55));backdrop-filter:blur(4px);mask-image:linear-gradient(to bottom,transparent,#000)}
+
+
+/* React Bits-inspired effects: BlurText, SpotlightCard and AnimatedContent. */
+.blur-text { display:inline; }
+.blur-text-part { display:inline-block; will-change:opacity,transform,filter; }
+.product-card-motion { min-width:0; height:100%; }
+.product-card-motion > .spotlight-card { height:100%; }
+.spotlight-card { position:relative; isolation:isolate; overflow:hidden; }
+.spotlight-card::before {
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  opacity:0;
+  background:radial-gradient(360px circle at var(--spotlight-x,50%) var(--spotlight-y,50%),var(--spotlight-color,rgba(82,211,235,.13)),transparent 72%);
+  transition:opacity .25s ease;
+}
+.spotlight-card:hover::before,
+.spotlight-card:focus-within::before { opacity:1; }
+.spotlight-card > * { position:relative; z-index:1; }
+.product-card.spotlight-card { transition:transform .28s ease,border-color .28s ease,box-shadow .28s ease; }
+.course-panel.spotlight-card { transition:border-color .25s ease,box-shadow .25s ease; }
+.course-panel.spotlight-card:hover { border-color:rgba(92,211,233,.38); box-shadow:0 18px 48px rgba(0,0,0,.16),0 0 28px rgba(92,211,233,.06); }
+.course-panel-motion { width:100%; }
+@media(prefers-reduced-motion:reduce) {
+  .blur-text-part { will-change:auto; }
+  .spotlight-card::before { transition:none; }
+}

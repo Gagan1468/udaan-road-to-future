@@ -16,6 +16,5 @@ export const NAV_LINKS = [
   { label: "Products", section: "products" },
   { label: "About", section: "about" },
   { label: "Courses", to: "/courses", section: "courses" },
-  { label: "Reviews", section: "reviews" },
   { label: "Contact", section: "contact" },
 ];

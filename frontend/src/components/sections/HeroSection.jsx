@@ -4,6 +4,7 @@ import { Button } from "../ui/Button.jsx";
 import { scrollToId } from "../../lib/navigation.js";
 import RotatingText from "../ui/RotatingText.jsx";
 import PixelSwap from "../ui/PixelSwap.jsx";
+import BlurText from "../ui/BlurText.jsx";
 
 
 export function HeroSection() {
@@ -30,7 +31,7 @@ export function HeroSection() {
             transition={{ type: "spring", damping: 30, stiffness: 400 }}
           />
         </h1>
-        <p className="hero-sub">From standout websites and powerful apps to practical courses, we help people and businesses turn ideas into reality.</p>
+        <p className="hero-sub"><BlurText text="From standout websites and powerful apps to practical courses, we help people and businesses turn ideas into reality." className="hero-blur-copy" animateBy="words" duration={0.48} /></p>
         <div className="hero-actions">
           <Button onClick={() => scrollToId("contact")}>Let's Build Something <ArrowRight size={16} /></Button>
           <Button variant="ghost" onClick={() => scrollToId("work")}>Explore Our Work</Button>
