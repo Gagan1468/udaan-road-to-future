@@ -1,4 +1,4 @@
-export const SECTION_IDS = ["hero", "services", "work", "process", "products", "courses", "about", "contact"];
+export const SECTION_IDS = ["hero", "services", "work", "process", "products", "courses", "about", "team", "reviews", "contact"];
 
 export function scrollToId(id, { behavior } = {}) {
   const el = document.getElementById(id);
@@ -16,5 +16,6 @@ export const NAV_LINKS = [
   { label: "Products", section: "products" },
   { label: "About", section: "about" },
   { label: "Courses", to: "/courses", section: "courses" },
+  { label: "Reviews", section: "reviews" },
   { label: "Contact", section: "contact" },
 ];

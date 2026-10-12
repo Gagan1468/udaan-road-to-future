@@ -7,6 +7,7 @@ class RegistrationCreate(BaseModel):
     name: str = Field(min_length=2, max_length=120)
     email: EmailStr
     phone: str | None = Field(default=None, max_length=40)
+    phone_verification_token: str | None = Field(default=None, max_length=4096)
     class_level: Literal["9", "11"]
     school: str | None = Field(default=None, max_length=180)
     city: str | None = Field(default=None, max_length=120)

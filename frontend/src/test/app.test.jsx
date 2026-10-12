@@ -49,7 +49,7 @@ describe("homepage", () => {
     expect(within(primaryNav).getByRole("link", { name: "Contact" })).toHaveAttribute("href", "/#contact");
     expect(screen.queryByRole("navigation", { name: "Homepage sections" })).not.toBeInTheDocument();
     expect(screen.getByText("PostgreSQL")).toBeInTheDocument();
-    for (const re of [/we build what's next/i, /from complex ideas to real systems/i, /things we have built/i, /four stages/i, /what's ready/i, /learn what's next/i, /technology should move you forward/i, /have a challenge worth solving/i]) {
+    for (const re of [/we build what's next/i, /from complex ideas to real systems/i, /things we have built/i, /four stages/i, /what's ready/i, /learn what's next/i, /technology should move you forward/i, /reviews from our customers/i, /have a challenge worth solving/i]) {
       expect((await screen.findAllByRole("heading", { name: re })).length).toBeGreaterThan(0);
     }
     const footer = screen.getByRole("contentinfo");

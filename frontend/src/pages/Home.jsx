@@ -14,6 +14,7 @@ import { ProductsSection } from "../components/sections/ProductsSection.jsx";
 import { CoursesSection } from "../components/sections/CoursesSection.jsx";
 import { AboutSection } from "../components/sections/AboutSection.jsx";
 import { ContactSection } from "../components/sections/ContactSection.jsx";
+import { ClickSpark } from "../components/ui/ClickSpark.jsx";
 
 export default function Home() {
   usePageTitle("");
@@ -37,6 +38,7 @@ export default function Home() {
   return (
     <>
       <SceneLayer />
+      <ClickSpark>
       <main id="main" className="home" tabIndex={-1}>
         <HeroSection />
         <TechHighlights />
@@ -47,7 +49,9 @@ export default function Home() {
         <CoursesSection />
         <AboutSection />
         <ContactSection service={service} />
+        <div className="home-bottom-blur" aria-hidden="true" />
       </main>
+      </ClickSpark>
     </>
   );
 }

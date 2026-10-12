@@ -9,3 +9,9 @@ Important:
 - Configure Vercel environment variables VITE_EMAILJS_SERVICE_ID and VITE_EMAILJS_PUBLIC_KEY. The confirmation template defaults to m22699q; optionally set VITE_EMAILJS_AUTO_REPLY_TEMPLATE_ID.
 - EmailJS template should address the recipient via `email` and use name, registration_code, course_name, dashboard_url variables.
 - No push/deploy was performed.
+
+Latest UI + OTP update
+- Reviews now use the FlexCarousel component with the supplied customer-review profile images and a synced review detail panel. This implementation is a dependency-free accessible carousel (drag/scroll, arrow controls, keyboard and reduced-motion support) because this build environment could not reach npm registry to install `ogl`; it reproduces the carousel interaction rather than the original OGL/WebGL liquid lens effect.
+- Course artwork includes Gojo Satoru, Zenitsu Agatsuma and Inosuke Hashibira profile-style character images. These are decorative fictional-character artwork, not customer/reviewer identities. Image source credits are documented in frontend/public/images/ASSET-CREDITS.md.
+- SMS OTP endpoints use Twilio Verify on the backend. Real SMS will only work after setting TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_VERIFY_SERVICE_SID in the backend environment. No provider credentials are bundled. The API rate-limits OTP send/check attempts and issues a short-lived signed verification token; registration checks that token against the same phone number.
+- The hero scroll hint is now in normal document flow below the PixelSwap preview to prevent overlap. The hero heading switches from “WE DO” to “WE PROVIDE” when the rotating service reaches “COURSES”.

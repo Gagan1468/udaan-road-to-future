@@ -7,7 +7,6 @@ import { useScrollProgress } from "../../hooks/useScrollProgress.js";
 import { NAV_LINKS, scrollToId } from "../../lib/navigation.js";
 import { MobileMenu } from "./MobileMenu.jsx";
 
-
 export function initials(name = "") {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0].toUpperCase()).join("") || "U";
 }
@@ -67,7 +66,7 @@ export function Navbar() {
             <span className="wordmark-mark"><img src="/udaan-logo.png" alt="" width="28" height="28" /></span>
             <span>udaan<span className="wordmark-light"> techsolutions</span></span>
           </Link>
-          <ul className="nav-links">
+          <ul className="nav-links gooey-nav" aria-label="Site sections">
             {NAV_LINKS.map((l) => (
               <li key={l.label}>
                 {l.to ? (
@@ -91,7 +90,6 @@ export function Navbar() {
           </div>
         </nav>
       </header>
-
       <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} onSection={goSection} />
     </>
   );

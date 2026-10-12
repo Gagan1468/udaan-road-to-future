@@ -10,8 +10,20 @@ const pillars = [
   { icon: BrainCircuit, title: "AI for everyday life", text: "Use AI for study support, research, planning, writing, and practical problem-solving." },
 ];
 
+const CHARACTER_PROFILES = [
+  { name: "Gojo Satoru", role: "Jujutsu Kaisen", src: "https://commons.wikimedia.org/wiki/Special:FilePath/Saturo%20gojo%20art.jpg?width=600", className: "gojo" },
+  { name: "Zenitsu", role: "Demon Slayer", src: "https://asia.sega.com/kimetsu_hinokami/en/assets/img/sub/character/chara3_thumb.png", className: "zenitsu" },
+  { name: "Inosuke", role: "Demon Slayer", src: "https://asia.sega.com/kimetsu_hinokami/en/assets/img/sub/character/chara4_thumb.png", className: "inosuke" },
+];
 function Art({ small = false }) {
-  return <div className={`art ${small ? "art-small" : ""}`} aria-hidden="true"><div className="art-grid" /><div className="art-orbit art-orbit-one" /><div className="art-orbit art-orbit-two" /><div className="art-core"><BrainCircuit size={small ? 54 : 78} strokeWidth={1.1} /></div><span className="art-tag art-tag-one">CREATE</span><span className="art-tag art-tag-two">BUILD</span><span className="art-tag art-tag-three">EXPLORE</span></div>;
+  return <div className={`art character-art ${small ? "art-small" : ""}`} aria-label="Anime character profile art">
+    <div className="art-grid" />
+    <div className="character-profile-row">{CHARACTER_PROFILES.map((character) => <figure className={`character-profile ${character.className}`} key={character.name}>
+      <img src={character.src} alt={character.name} loading="lazy" referrerPolicy="no-referrer" onError={(event) => { event.currentTarget.style.display = "none"; event.currentTarget.parentElement.classList.add("image-fallback"); }} />
+      <figcaption><strong>{character.name}</strong><span>{character.role}</span></figcaption>
+    </figure>)}</div>
+    <span className="art-tag art-tag-one">CREATE</span><span className="art-tag art-tag-two">BUILD</span><span className="art-tag art-tag-three">EXPLORE</span>
+  </div>;
 }
 
 export function CourseList({ onOpen }) {
@@ -40,8 +52,11 @@ export function CourseDetail({ onBack, onRegister, registerLabel = "Register You
 }
 
 export function RegistrationModal({ onClose, onSuccess, token }) {
-  const [mode,setMode]=useState("individual"), [form,setForm]=useState({name:"",email:"",phone:"",class_level:"9",school:"",city:""}), [busy,setBusy]=useState(false), [error,setError]=useState("");
-  const change=(k,v)=>{setForm(p=>({...p,[k]:v}));setError("");};
+  const [mode,setMode]=useState("individual"), [form,setForm]=useState({name:"",email:"",phone:"",class_level:"9",school:"",city:""}), [busy,setBusy]=useState(false), [error,setError]=useState(""), [otpCode,setOtpCode]=useState(""), [otpSent,setOtpSent]=useState(false), [otpBusy,setOtpBusy]=useState(false), [phoneVerificationToken,setPhoneVerificationToken]=useState("");
+  const change=(k,v)=>{setForm(p=>({...p,[k]:v}));setError("");if(k==="phone"){setOtpSent(false);setOtpCode("");setPhoneVerificationToken("");}};
+  const normalizedPhone=()=>{let value=form.phone.replace(/[\s().-]/g,"");if(/^\d{10}$/.test(value))value=`+91${value}`;else if(/^91\d{10}$/.test(value))value=`+${value}`;return value;};
+  async function sendOtp(){setOtpBusy(true);setError("");try{const phone=normalizedPhone();const result=await api("/api/otp/send",{method:"POST",body:JSON.stringify({phone})});setForm(p=>({...p,phone}));setOtpSent(true);setPhoneVerificationToken("");setError("");}catch(err){setError(err.message||"Could not send SMS code.");}finally{setOtpBusy(false);}}
+  async function verifyOtp(){setOtpBusy(true);setError("");try{const phone=normalizedPhone();const result=await api("/api/otp/verify",{method:"POST",body:JSON.stringify({phone,code:otpCode})});setPhoneVerificationToken(result.verification_token);setForm(p=>({...p,phone:result.phone}));setError("");}catch(err){setPhoneVerificationToken("");setError(err.message||"Could not verify SMS code.");}finally{setOtpBusy(false);}}
   async function submit(e){
     e.preventDefault();
     if(busy)return;
@@ -49,7 +64,7 @@ export function RegistrationModal({ onClose, onSuccess, token }) {
     try {
       // Persist first. Email failure must not turn a saved registration into a retryable
       // form error, because retrying could create another enrollment.
-      const result = await api("/api/registrations",{method:"POST",body:JSON.stringify({...form,mode})},token);
+      const result = await api("/api/registrations",{method:"POST",body:JSON.stringify({...form,mode,phone:normalizedPhone(),phone_verification_token:phoneVerificationToken})},token);
       let confirmationEmailSent = false;
       try {
         const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
@@ -74,7 +89,7 @@ export function RegistrationModal({ onClose, onSuccess, token }) {
       setBusy(false);
     }
   }
-  return <div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)onClose();}}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="registration-title"><button className="close-button" onClick={onClose} aria-label="Close registration form"><X size={20}/></button><small>ROAD TO FUTURE</small><h2 id="registration-title">Register your interest</h2><p className="muted">Your registration is sent to the course database.</p><div className="mode-tabs" role="group" aria-label="Registration type"><button type="button" className={mode==="individual"?"selected":""} onClick={()=>setMode("individual")}><Users size={16}/> Individual</button><button type="button" className={mode==="school"?"selected":""} onClick={()=>setMode("school")}><GraduationCap size={16}/> School</button></div><form onSubmit={submit}><div className="form-grid"><label>Full name<input required minLength="2" maxLength="120" autoComplete="name" value={form.name} onChange={e=>change("name",e.target.value)} placeholder="Your full name"/></label><label>Email address<input required type="email" maxLength="254" autoComplete="email" value={form.email} onChange={e=>change("email",e.target.value)} placeholder="you@example.com"/></label><label>Phone <span>(optional)</span><input type="tel" maxLength="40" autoComplete="tel" value={form.phone} onChange={e=>change("phone",e.target.value)} placeholder="Phone number"/></label><label>Class<select value={form.class_level} onChange={e=>change("class_level",e.target.value)}><option value="9">Class 9</option><option value="11">Class 11</option></select></label>{mode==="school"&&<><label className="full">School name<input required maxLength="180" value={form.school} onChange={e=>change("school",e.target.value)} placeholder="Name of school"/></label><label className="full">City<input required maxLength="120" value={form.city} onChange={e=>change("city",e.target.value)} placeholder="City"/></label></>}</div><p className="privacy-note">By submitting, you confirm these details are accurate. Do not enter sensitive information.</p>{error&&<p className="error" role="alert">{error}</p>}<button className="primary submit" disabled={busy}>{busy?"Submitting…":"Submit registration"} <ArrowRight size={17}/></button></form></section></div>;
+  return <div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)onClose();}}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="registration-title"><button className="close-button" onClick={onClose} aria-label="Close registration form"><X size={20}/></button><small>ROAD TO FUTURE</small><h2 id="registration-title">Register your interest</h2><p className="muted">Your registration is sent to the course database.</p><div className="mode-tabs" role="group" aria-label="Registration type"><button type="button" className={mode==="individual"?"selected":""} onClick={()=>setMode("individual")}><Users size={16}/> Individual</button><button type="button" className={mode==="school"?"selected":""} onClick={()=>setMode("school")}><GraduationCap size={16}/> School</button></div><form onSubmit={submit}><div className="form-grid"><label>Full name<input required minLength="2" maxLength="120" autoComplete="name" value={form.name} onChange={e=>change("name",e.target.value)} placeholder="Your full name"/></label><label>Email address<input required type="email" maxLength="254" autoComplete="email" value={form.email} onChange={e=>change("email",e.target.value)} placeholder="you@example.com"/></label><label>Mobile number <span>(SMS verification required)</span><input type="tel" required maxLength="20" autoComplete="tel" value={form.phone} onChange={e=>change("phone",e.target.value)} placeholder="+91 98765 43210" aria-describedby="otp-help"/><small id="otp-help" className="otp-help">Use an international format. Indian 10-digit numbers are automatically prefixed with +91.</small><div className="otp-actions"><button type="button" className="outline-button" onClick={sendOtp} disabled={otpBusy||!form.phone.trim()||Boolean(phoneVerificationToken)}>{otpBusy?"Please wait…":otpSent?"Resend code":"Send SMS code"}</button>{phoneVerificationToken&&<span className="otp-verified">✓ Mobile verified</span>}</div>{otpSent&&!phoneVerificationToken&&<div className="otp-verify-row"><input aria-label="SMS verification code" inputMode="numeric" autoComplete="one-time-code" maxLength="10" value={otpCode} onChange={e=>setOtpCode(e.target.value.replace(/\D/g, ""))} placeholder="Enter code"/><button type="button" className="outline-button" onClick={verifyOtp} disabled={otpBusy||otpCode.length<4}>Verify</button></div>}</label><label>Class<select value={form.class_level} onChange={e=>change("class_level",e.target.value)}><option value="9">Class 9</option><option value="11">Class 11</option></select></label>{mode==="school"&&<><label className="full">School name<input required maxLength="180" value={form.school} onChange={e=>change("school",e.target.value)} placeholder="Name of school"/></label><label className="full">City<input required maxLength="120" value={form.city} onChange={e=>change("city",e.target.value)} placeholder="City"/></label></>}</div><p className="privacy-note">By submitting, you confirm these details are accurate. Do not enter sensitive information.</p>{error&&<p className="error" role="alert">{error}</p>}<button className="primary submit" disabled={busy||!phoneVerificationToken}>{busy?"Submitting…":"Submit registration"} <ArrowRight size={17}/></button></form></section></div>;
 }
 
 export function SuccessModal({entry,onClose,onDashboard}) {

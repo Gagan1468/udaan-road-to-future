@@ -7,6 +7,9 @@ import os
 import urllib.request
 import urllib.error
 from collections import defaultdict, deque
+import re
+from urllib.parse import urlencode
+from pydantic import BaseModel, Field
 from datetime import datetime, timezone
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,7 +22,7 @@ from .database import Base, engine, get_db
 from .models import Enquiry, Registration, User
 from .schemas import (AdminLogin, CourseDashboardOut, DeleteAccount, EnquiryAck, EnquiryCreate, EnquiryOut, GoogleLogin, LoginOut,
                       PasswordChange, ProfileUpdate, RegistrationCreate, RegistrationOut, SessionOut, SignupIn, UserLogin, UserOut)
-from .security import TOKEN_HOURS, create_access_token, require_admin, require_user, require_user_session, verify_admin, hash_password, verify_password
+from .security import TOKEN_HOURS, create_access_token, decode_token, require_admin, require_user, require_user_session, verify_admin, hash_password, verify_password
 
 app = FastAPI(title="Udaan Ocourses API", version="1.0.0", description="Road to Future registration and admin API")
 
@@ -32,6 +35,74 @@ app.add_middleware(
 )
 
 USER_TOKEN_HOURS = 24 * 30
+
+
+class PhoneOtpSend(BaseModel):
+    phone: str = Field(min_length=8, max_length=20)
+
+class PhoneOtpVerify(BaseModel):
+    phone: str = Field(min_length=8, max_length=20)
+    code: str = Field(min_length=4, max_length=10, pattern=r"^\d{4,10}$")
+
+_TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
+_TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
+_TWILIO_VERIFY_SERVICE_SID = os.getenv("TWILIO_VERIFY_SERVICE_SID", "")
+_otp_send_limits = defaultdict(deque)
+_otp_verify_limits = defaultdict(deque)
+
+def _normalize_e164(phone: str) -> str:
+    value = re.sub(r"[\s().-]", "", phone.strip())
+    if not re.fullmatch(r"\+[1-9]\d{7,14}", value):
+        raise HTTPException(status_code=422, detail="Enter a valid international phone number, e.g. +919876543210.")
+    return value
+
+def _check_otp_rate_limit(bucket, key: str, limit: int, window_seconds: int = 3600):
+    now = time.time()
+    events = bucket[key]
+    while events and now - events[0] > window_seconds:
+        events.popleft()
+    if len(events) >= limit:
+        raise HTTPException(status_code=429, detail="Too many OTP attempts. Please wait before trying again.")
+    events.append(now)
+
+def _twilio_verify(path: str, data: dict):
+    if not (_TWILIO_ACCOUNT_SID and _TWILIO_AUTH_TOKEN and _TWILIO_VERIFY_SERVICE_SID):
+        raise HTTPException(status_code=503, detail="SMS OTP is not configured yet. Add the Twilio Verify environment variables to the backend.")
+    import base64
+    url = f"https://verify.twilio.com/v2/Services/{_TWILIO_VERIFY_SERVICE_SID}/{path}"
+    auth = base64.b64encode(f"{_TWILIO_ACCOUNT_SID}:{_TWILIO_AUTH_TOKEN}".encode()).decode()
+    req = urllib.request.Request(url, data=urlencode(data).encode(), headers={"Authorization": f"Basic {auth}", "Content-Type": "application/x-www-form-urlencoded"}, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=10) as response:
+            return json.loads(response.read().decode())
+    except urllib.error.HTTPError as exc:
+        # Do not expose provider responses, account IDs, or credentials to clients.
+        if exc.code in (400, 404):
+            raise HTTPException(status_code=400, detail="OTP could not be processed. Check the phone number and code, then try again.")
+        raise HTTPException(status_code=502, detail="SMS verification provider is temporarily unavailable.")
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=502, detail="SMS verification provider is temporarily unavailable.")
+
+@app.post("/api/otp/send")
+def send_phone_otp(payload: PhoneOtpSend, request: Request):
+    phone = _normalize_e164(payload.phone)
+    _check_otp_rate_limit(_otp_send_limits, f"phone:{phone}", 3)
+    _check_otp_rate_limit(_otp_send_limits, f"ip:{request.client.host if request.client else 'unknown'}", 8)
+    _twilio_verify("Verifications", {"To": phone, "Channel": "sms"})
+    return {"ok": True, "message": "Verification code sent if the number can receive SMS."}
+
+@app.post("/api/otp/verify")
+def verify_phone_otp(payload: PhoneOtpVerify, request: Request):
+    phone = _normalize_e164(payload.phone)
+    _check_otp_rate_limit(_otp_verify_limits, f"phone:{phone}", 6)
+    _check_otp_rate_limit(_otp_verify_limits, f"ip:{request.client.host if request.client else 'unknown'}", 15)
+    result = _twilio_verify("VerificationCheck", {"To": phone, "Code": payload.code})
+    if result.get("status") != "approved":
+        raise HTTPException(status_code=400, detail="That code is incorrect or expired. Request a new code and try again.")
+    token = create_access_token(f"phone:{phone}", token_type="phone_verification", expires_hours=0.25)
+    return {"verified": True, "phone": phone, "verification_token": token, "expires_in": 900}
 
 RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
 EMAIL_FROM = os.getenv("EMAIL_FROM", "")
@@ -251,6 +322,13 @@ def list_enquiries(limit: int = Query(default=100, ge=1, le=500), offset: int = 
 
 @app.post("/api/registrations", response_model=RegistrationOut, status_code=201)
 def create_registration(payload: RegistrationCreate, user_id: int = Depends(require_user), db: Session = Depends(get_db)):
+    if payload.phone:
+        if not payload.phone_verification_token:
+            raise HTTPException(status_code=422, detail="Verify your mobile number with SMS OTP before registering.")
+        claims = decode_token(payload.phone_verification_token)
+        expected_phone = _normalize_e164(payload.phone)
+        if claims.get("type") != "phone_verification" or claims.get("sub") != f"phone:{expected_phone}":
+            raise HTTPException(status_code=422, detail="Mobile verification is invalid or belongs to another number. Verify again.")
     if payload.mode == "school" and (not payload.school or not payload.city):
         raise HTTPException(status_code=422, detail="School name and city are required for school registration.")
 

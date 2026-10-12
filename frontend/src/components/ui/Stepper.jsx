@@ -1,0 +1,9 @@
+import React, { useState } from "react";
+import { ArrowLeft, ArrowRight, Check } from "lucide-react";
+import "./Stepper.css";
+
+export function Step({ children }) { return <div className="stepper-step">{children}</div>; }
+export default function Stepper({ children, initialStep=1, onStepChange=()=>{}, onFinalStepCompleted=()=>{}, backButtonText="Back", nextButtonText="Continue", completeButtonText="Complete", accentColor="#67e8f9", completedContent, theme="dark", frame=true }) {
+ const steps=React.Children.toArray(children).filter(Boolean); const [current,setCurrent]=useState(initialStep); const done=current>steps.length; const go=(n)=>{const next=Math.max(1,Math.min(steps.length+1,n));if(next===current)return;setCurrent(next);if(next>steps.length)onFinalStepCompleted();else onStepChange(next);};
+ return <div className={`stepper ${frame?'stepper-framed':''}`} style={{'--stepper-accent':accentColor}} data-theme={theme}><div className="stepper-track">{steps.map((s,i)=><button type="button" key={i} onClick={()=>i+1<current&&go(i+1)} disabled={i+1>=current} className={`stepper-marker ${current===i+1?'active':current>i+1?'complete':''}`} aria-label={`Step ${i+1}: ${s.props.title||''}`}><span>{current>i+1?<Check size={14}/>:i+1}</span><small>{s.props.title||`Step ${i+1}`}</small></button>)}</div><div className="stepper-content" aria-live="polite">{done?(completedContent||<><span className="stepper-success"><Check size={20}/></span><h3>You're all set.</h3><p>You've reached the final step.</p></>):steps[current-1]}</div>{!done&&<div className="stepper-footer"><button type="button" className="stepper-back" onClick={()=>go(current-1)} disabled={current===1}><ArrowLeft size={15}/>{backButtonText}</button><button type="button" className="stepper-next" onClick={()=>go(current+1)}>{current===steps.length?completeButtonText:nextButtonText}<ArrowRight size={15}/></button></div>}</div>;
+}
