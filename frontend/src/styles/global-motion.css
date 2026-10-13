@@ -1,0 +1,82 @@
+/* Udaan's shared motion layer: lightweight, responsive, and reduced-motion aware. */
+:root {
+  --ui-motion-ease: cubic-bezier(.2,.75,.25,1);
+  --ui-motion-line: rgba(112, 214, 239, .26);
+}
+
+/* Spotlight-style glass pill for the existing route-aware navbar. */
+.spotlight-links {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.045);
+}
+.spotlight-links::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(135px circle at var(--nav-spot-x, 50%) var(--nav-spot-y, 50%), rgba(130, 177, 255, .19), transparent 72%);
+  transition: opacity .24s ease;
+}
+.spotlight-links:hover::before { opacity: 1; }
+.spotlight-links li { position: relative; z-index: 1; }
+.spotlight-links a {
+  transition: color .2s ease, background .25s var(--ui-motion-ease), box-shadow .25s ease, transform .25s var(--ui-motion-ease);
+}
+.spotlight-links a:hover { transform: translateY(-1px); box-shadow: inset 0 0 0 1px rgba(145,190,255,.13); }
+.spotlight-links a.active { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--u-accent) 34%, transparent), 0 0 22px color-mix(in srgb, var(--u-accent) 8%, transparent); }
+.navbar-inner { transition: background .35s ease, border-color .35s ease, box-shadow .35s ease, transform .35s var(--ui-motion-ease); }
+.navbar.is-scrolled .navbar-inner { border-color: color-mix(in srgb, var(--u-line) 80%, rgba(132,190,255,.22)); }
+
+/* Each routed surface gets a short entrance; no JS observer or layout shift required. */
+#main,
+.legacy-surface,
+.profile-shell,
+.admin-shell {
+  animation: udaan-page-enter .55s var(--ui-motion-ease) both;
+}
+@keyframes udaan-page-enter {
+  from { opacity: .01; transform: translate3d(0, 9px, 0); filter: blur(2px); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); filter: blur(0); }
+}
+
+/* Consistent interactive depth for existing content across Home, Courses, Profile and Admin. */
+.course-card,
+.dashboard-card,
+.pillar-card,
+.profile-card,
+.admin-card,
+.work-card,
+.product-card,
+.service-row,
+.learning-photo,
+.menu-panel {
+  transition-property: transform, border-color, box-shadow, background-color;
+  transition-duration: .28s;
+  transition-timing-function: var(--ui-motion-ease);
+}
+.course-card:hover,
+.dashboard-card:hover,
+.pillar-card:hover,
+.profile-card:hover,
+.admin-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--u-accent, #81d8ee) 35%, var(--u-line, rgba(255,255,255,.12)));
+  box-shadow: 0 16px 38px rgba(0,0,0,.15), 0 0 24px rgba(104,190,235,.045);
+}
+button, a, [role="button"] { -webkit-tap-highlight-color: transparent; }
+button:not(:disabled), a { touch-action: manipulation; }
+:focus-visible { scroll-margin-block: 90px; }
+
+@media (max-width: 760px) {
+  .spotlight-links { display: none; }
+  #main, .legacy-surface, .profile-shell, .admin-shell { animation-duration: .35s; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  #main, .legacy-surface, .profile-shell, .admin-shell { animation: none !important; }
+  .spotlight-links a:hover, .course-card:hover, .dashboard-card:hover, .pillar-card:hover, .profile-card:hover, .admin-card:hover { transform: none !important; }
+}

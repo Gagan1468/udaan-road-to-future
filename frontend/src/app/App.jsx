@@ -4,6 +4,7 @@ import { Navbar } from "../components/layout/Navbar.jsx";
 import { Footer } from "../components/layout/Footer.jsx";
 import { ErrorBoundary } from "../components/ui/ErrorBoundary.jsx";
 import { AppRoutes } from "./routes.jsx";
+import SitewideEffects from "../components/ui/SitewideEffects.jsx";
 
 function ScrollToTop() {
   const { pathname, hash } = useLocation();
@@ -14,6 +15,7 @@ function ScrollToTop() {
 export default function App() {
   return (
     <>
+      <SitewideEffects />
       <ScrollToTop />
       <Navbar />
       <ErrorBoundary><AppRoutes /></ErrorBoundary>

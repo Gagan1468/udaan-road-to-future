@@ -47,6 +47,7 @@ export function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [spotlightX, setSpotlightX] = useState("50%");
   const onHome = location.pathname === "/";
 
   useEffect(() => setMenuOpen(false), [location.pathname, location.hash]);
@@ -61,7 +62,7 @@ export function Navbar() {
     <>
       <a className="skip-link" href="#main">Skip to content</a>
       <header className={`navbar ${scrolled || !onHome ? "is-scrolled" : ""}`}>
-        <nav className="navbar-inner" aria-label="Primary">
+        <nav className="navbar-inner spotlight-navbar" aria-label="Primary" onPointerMove={(e) => { const r = e.currentTarget.getBoundingClientRect(); setSpotlightX(`${e.clientX - r.left}px`); }} style={{ "--spotlight-x": spotlightX }}>
           <Link to="/" className="wordmark" aria-label="Udaan TechSolutions home">
             <span className="wordmark-mark"><img src="/udaan-logo.png" alt="" width="28" height="28" /></span>
             <span>udaan<span className="wordmark-light"> techsolutions</span></span>

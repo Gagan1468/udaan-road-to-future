@@ -178,3 +178,40 @@
   .blur-text-part { will-change:auto; }
   .spotlight-card::before { transition:none; }
 }
+
+/* Udaan motion system: spotlight glass, page transitions, scroll reveals and card depth. */
+:root { --pointer-x: 50vw; --pointer-y: 30vh; --motion-ease: cubic-bezier(.2,.75,.25,1); }
+html { scroll-behavior: smooth; }
+body { isolation: isolate; }
+.site-atmosphere { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; contain: strict; }
+.site-atmosphere::before { content: ""; position: absolute; inset: 0; opacity: .36; background: radial-gradient(520px circle at var(--pointer-x) var(--pointer-y), rgba(133,111,255,.13), transparent 70%); transition: opacity .25s ease; }
+.site-atmosphere span { position: absolute; width: 34vw; height: 34vw; min-width: 220px; min-height: 220px; border-radius: 50%; filter: blur(80px); opacity: .075; background: #7d6aff; animation: atmosphere-drift 24s ease-in-out infinite alternate; }
+.site-atmosphere span:nth-child(1) { top: 8%; left: -12%; }
+.site-atmosphere span:nth-child(2) { top: 42%; right: -15%; background: #56b7ff; animation-delay: -8s; }
+.site-atmosphere span:nth-child(3) { bottom: -18%; left: 28%; background: #a76bff; animation-delay: -15s; }
+.spotlight-navbar { position: relative; isolation: isolate; overflow: visible; }
+.spotlight-navbar::before { content: ""; position: absolute; inset: -1px; border-radius: inherit; pointer-events: none; opacity: .85; z-index: -1; background: radial-gradient(180px circle at var(--spotlight-x, 50%) 0%, rgba(164,145,255,.20), transparent 72%); }
+.spotlight-navbar::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; pointer-events: none; background: radial-gradient(160px circle at var(--spotlight-x, 50%) 50%, rgba(176,157,255,.9), transparent 80%); opacity: .75; }
+.navbar { transition: background .35s ease, border-color .35s ease, box-shadow .35s ease, transform .35s var(--motion-ease); }
+.navbar.is-scrolled { backdrop-filter: blur(22px) saturate(150%); box-shadow: 0 10px 40px rgba(0,0,0,.18); }
+.nav-links a, .nav-actions button, .menu-toggle, .profile-nav a, .outline-button, .primary, .btn { transition: color .22s ease, background .22s ease, border-color .22s ease, box-shadow .22s ease, transform .22s var(--motion-ease); }
+.nav-links a { position: relative; }
+.nav-links a::after { content: ""; position: absolute; left: 14px; right: 14px; bottom: 3px; height: 1px; transform: scaleX(0); transform-origin: center; transition: transform .25s var(--motion-ease); background: linear-gradient(90deg, transparent, #b5a8ff, transparent); }
+.nav-links a:hover::after, .nav-links a.active::after { transform: scaleX(1); }
+.btn:hover, .primary:hover, .outline-button:hover, .nav-actions button:hover { transform: translateY(-2px); box-shadow: 0 9px 28px rgba(125,105,255,.16); }
+.motion-reveal { opacity: 0; transform: translate3d(0,22px,0) scale(.99); filter: blur(3px); transition: opacity .7s var(--motion-ease), transform .7s var(--motion-ease), filter .7s var(--motion-ease); transition-delay: var(--reveal-delay, 0ms); }
+.motion-reveal.motion-in-view { opacity: 1; transform: translate3d(0,0,0) scale(1); filter: blur(0); }
+.page-motion-enter { animation: page-enter .55s var(--motion-ease) both; }
+:is(.service-card,.work-card,.product-card,.course-card,.pillar-card,.stat-card,.dashboard-card,.profile-nav,.profile-panel,.registrations-card,.tech-card,.feature-card) { position: relative; transform: translateZ(0); transition: transform .32s var(--motion-ease), border-color .32s ease, box-shadow .32s ease, background-color .32s ease; }
+:is(.service-card,.work-card,.product-card,.course-card,.pillar-card,.stat-card,.dashboard-card,.tech-card,.feature-card):hover { transform: translateY(-5px); border-color: rgba(166,148,255,.38); box-shadow: 0 18px 50px rgba(0,0,0,.2), 0 0 28px rgba(125,105,255,.07); }
+:is(.service-card,.work-card,.product-card,.course-card,.pillar-card,.stat-card,.dashboard-card,.tech-card,.feature-card)::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity .3s ease; background: radial-gradient(300px circle at var(--card-x,50%) var(--card-y,50%), rgba(159,139,255,.10), transparent 65%); }
+:is(.service-card,.work-card,.product-card,.course-card,.pillar-card,.stat-card,.dashboard-card,.tech-card,.feature-card):hover::after { opacity: 1; }
+:is(.hero h1,.detail-copy h1,.dashboard-hero h1) { text-wrap: balance; }
+:is(.hero h1,.detail-copy h1) { animation: title-rise .8s .08s var(--motion-ease) both; }
+:is(.hero > p,.hero .hero-actions,.detail-copy > p) { animation: title-rise .8s .18s var(--motion-ease) both; }
+:is(button,a,input,select,textarea):focus-visible { outline: 2px solid rgba(172,157,255,.95); outline-offset: 3px; }
+@keyframes page-enter { from { opacity: .4; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes title-rise { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes atmosphere-drift { from { transform: translate3d(-4%, -3%, 0) scale(.92); } to { transform: translate3d(8%, 7%, 0) scale(1.1); } }
+@media (pointer:fine) { :is(.service-card,.work-card,.product-card,.course-card,.pillar-card,.stat-card,.dashboard-card,.tech-card,.feature-card) { --card-x: 50%; --card-y: 50%; } }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .site-atmosphere span { animation: none; } .motion-reveal, .page-motion-enter, :is(.hero h1,.detail-copy h1,.dashboard-hero h1), :is(.hero > p,.hero .hero-actions,.detail-copy > p) { animation: none !important; opacity: 1 !important; transform: none !important; filter: none !important; transition: none !important; } }
