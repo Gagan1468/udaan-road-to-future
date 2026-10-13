@@ -297,3 +297,39 @@ a{color:inherit}
 #hero .scroll-cue{position:relative!important;left:auto;bottom:auto;align-self:flex-start;margin-top:16px;min-height:24px}
 #hero::after{pointer-events:none}
 @media(max-width:760px){#hero.hero{padding-bottom:48px}#hero .scroll-cue{display:none}}
+
+
+/* Fix: keep hero copy readable */
+.hero-copy,
+.hero-copy .hero-title,
+.hero-copy .hero-title *,
+.hero-copy .hero-sub,
+.hero-copy .blur-text,
+.hero-copy .blur-text-part {
+  filter: none !important;
+  opacity: 1 !important;
+  text-shadow: none;
+}
+
+.hero-copy .blur-text-part {
+  transform: none !important;
+  will-change: auto !important;
+}
+
+
+/* FIX: prevent headings and copy from remaining blurred */
+.blur-text-part {
+  filter: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+  will-change: auto !important;
+}
+
+/* Keep revealed content readable even if reveal state fails */
+.motion-reveal {
+  filter: none !important;
+}
+
+.motion-reveal.motion-in-view {
+  filter: none !important;
+}

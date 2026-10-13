@@ -23,8 +23,8 @@ export default function BlurText({
             key={`${part}-${index}`}
             className="blur-text-part"
             aria-hidden="true"
-            initial={reduceMotion ? false : { opacity: 0, y: hiddenY, filter: "blur(8px)" }}
-            whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            initial={false}
+            whileInView={{ opacity: 1, y: 0, filter: "none" }}
             viewport={{ once, amount: 0.4 }}
             transition={reduceMotion ? { duration: 0 } : { duration, delay: delay + index * 0.045, ease: [0.22, 1, 0.36, 1] }}
           >
